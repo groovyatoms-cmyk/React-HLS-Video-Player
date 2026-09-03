@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import ReactPlayer from 'react-player'
+import ReactPlayerImport from 'react-player'
 import Hls from 'hls.js'
 import { Play, Pause, Loader2, AlertTriangle, Copy, Info, X, ChevronRight } from 'lucide-react'
 import useHlsPlayer from '../../hooks/useHlsPlayer'
@@ -27,6 +27,12 @@ import {
   writeStorage,
 } from './playerUtils'
 import './VideoPlayer.css'
+
+// react-player's CJS build gets double-wrapped by some CJS/ESM interop
+// pipelines (observed with Vite's dependency pre-bundler), resolving the
+// default import to `{ default: ReactPlayer }` instead of the component
+// itself. Unwrap defensively so both shapes work.
+const ReactPlayer = ReactPlayerImport?.default ?? ReactPlayerImport
 
 const NATIVE_HLS_SUPPORTED =
   typeof document !== 'undefined' &&
