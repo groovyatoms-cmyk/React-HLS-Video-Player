@@ -23,7 +23,8 @@
   border-radius: var(--player-radius);
   overflow: hidden;
   color: var(--player-text);
-  font: 14px/1.4 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font: 14px/1.4 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, sans-serif;
   outline: none;
   isolation: isolate;
   -webkit-tap-highlight-color: transparent;
@@ -427,7 +428,12 @@
   bottom: 0;
   z-index: 6;
   padding: 34px 14px 10px;
-  background: linear-gradient(to top, var(--player-control-bg) 0%, var(--player-control-bg) 45%, transparent 100%);
+  background: linear-gradient(
+    to top,
+    var(--player-control-bg) 0%,
+    var(--player-control-bg) 45%,
+    transparent 100%
+  );
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
   border-top: 1px solid var(--player-glass-highlight);
@@ -470,7 +476,8 @@
   background: transparent;
   color: var(--player-text);
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: background 0.15s ease, transform 0.1s ease,
+    border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .pv-btn:hover {
@@ -490,7 +497,8 @@
 .pv-btn--active {
   color: var(--player-accent);
   background: color-mix(in srgb, var(--player-accent) 16%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--player-accent) 40%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--player-accent) 40%, transparent);
 }
 
 .pv-btn--primary {

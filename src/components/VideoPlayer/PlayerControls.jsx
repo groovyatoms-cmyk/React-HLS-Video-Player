@@ -17,16 +17,22 @@ import {
   Gauge,
   Share2,
   ChevronRight,
-  Radio,
+  Radio
 } from 'lucide-react'
 import QualityMenu from './QualityMenu'
 import AudioMenu from './AudioMenu'
 import SubtitleMenu from './SubtitleMenu'
 import SpeedMenu from './SpeedMenu'
 import SleepTimerMenu from './SleepTimerMenu'
-import { formatTime, speedLabel, toPercent, clamp, SLEEP_TIMER_OPTIONS } from './playerUtils'
+import {
+  formatTime,
+  speedLabel,
+  toPercent,
+  clamp,
+  SLEEP_TIMER_OPTIONS
+} from './playerUtils'
 
-function chapterAt(chapters, time) {
+function chapterAt (chapters, time) {
   if (!chapters || chapters.length === 0) return null
   let active = null
   for (const chapter of chapters) {
@@ -38,7 +44,7 @@ function chapterAt(chapters, time) {
 
 const LIVE_EDGE_THRESHOLD = 15 // seconds behind the live edge still considered "at" it
 
-function SeekBar({
+function SeekBar ({
   currentTime,
   duration,
   buffered,
@@ -50,7 +56,7 @@ function SeekBar({
   thumbnails,
   onSeek,
   onScrubStart,
-  onScrubEnd,
+  onScrubEnd
 }) {
   const trackRef = useRef(null)
   const [hover, setHover] = useState(null) // { x, time }
@@ -62,12 +68,22 @@ function SeekBar({
   // backward into the DVR window) work at all for live HLS.
   const hasDvrWindow = isLive && seekableEnd > seekableStart
   const rangeStart = hasDvrWindow ? seekableStart : 0
-  const effectiveDuration = hasDvrWindow ? seekableEnd - seekableStart : duration
-  const effectiveCurrentTime = clamp(currentTime - rangeStart, 0, Math.max(effectiveDuration, 0))
-  const effectiveBuffered = clamp(buffered - rangeStart, 0, Math.max(effectiveDuration, 0))
+  const effectiveDuration = hasDvrWindow
+    ? seekableEnd - seekableStart
+    : duration
+  const effectiveCurrentTime = clamp(
+    currentTime - rangeStart,
+    0,
+    Math.max(effectiveDuration, 0)
+  )
+  const effectiveBuffered = clamp(
+    buffered - rangeStart,
+    0,
+    Math.max(effectiveDuration, 0)
+  )
   const seekable = hasDvrWindow || Number.isFinite(duration)
 
-  const ratioFromClientX = useCallback((clientX) => {
+  const ratioFromClientX = useCallback(clientX => {
     const el = trackRef.current
     if (!el) return 0
     const rect = el.getBoundingClientRect()
@@ -75,29 +91,39 @@ function SeekBar({
   }, [])
 
   const handleMove = useCallback(
-    (clientX) => {
+    clientX => {
       const ratio = ratioFromClientX(clientX)
       const el = trackRef.current
       if (!el || !seekable) return
       const rect = el.getBoundingClientRect()
-      setHover({ x: clamp(clientX - rect.left, 0, rect.width), time: ratio * effectiveDuration })
+      setHover({
+        x: clamp(clientX - rect.left, 0, rect.width),
+        time: ratio * effectiveDuration
+      })
       if (dragging) onSeek(rangeStart + ratio * effectiveDuration)
     },
-    [seekable, effectiveDuration, dragging, onSeek, rangeStart, ratioFromClientX],
+    [
+      seekable,
+      effectiveDuration,
+      dragging,
+      onSeek,
+      rangeStart,
+      ratioFromClientX
+    ]
   )
 
   const handlePointerDown = useCallback(
-    (e) => {
+    e => {
       e.currentTarget.setPointerCapture?.(e.pointerId)
       setDragging(true)
       onScrubStart?.()
       handleMove(e.clientX)
     },
-    [handleMove, onScrubStart],
+    [handleMove, onScrubStart]
   )
 
   const handlePointerUp = useCallback(
-    (e) => {
+    e => {
       if (dragging) {
         const ratio = ratioFromClientX(e.clientX)
         onSeek(rangeStart + ratio * effectiveDuration)
@@ -105,96 +131,166 @@ function SeekBar({
       setDragging(false)
       onScrubEnd?.()
     },
-    [dragging, effectiveDuration, onSeek, onScrubEnd, ratioFromClientX, rangeStart],
+    [
+      dragging,
+      effectiveDuration,
+      onSeek,
+      onScrubEnd,
+      ratioFromClientX,
+      rangeStart
+    ]
   )
 
   const playedPct = toPercent(effectiveCurrentTime, effectiveDuration)
   const bufferedPct = toPercent(effectiveBuffered, effectiveDuration)
-  const atLiveEdge = hasDvrWindow && effectiveDuration - effectiveCurrentTime <= LIVE_EDGE_THRESHOLD
+  const atLiveEdge =
+    hasDvrWindow &&
+    effectiveDuration - effectiveCurrentTime <= LIVE_EDGE_THRESHOLD
 
-  const loopStartPct = abLoop && !hasDvrWindow ? toPercent(abLoop.start - rangeStart, effectiveDuration) : null
-  const loopEndPct = abLoop?.end != null && !hasDvrWindow ? toPercent(abLoop.end - rangeStart, effectiveDuration) : null
+  const loopStartPct =
+    abLoop && !hasDvrWindow
+      ? toPercent(abLoop.start - rangeStart, effectiveDuration)
+      : null
+  const loopEndPct =
+    abLoop?.end != null && !hasDvrWindow
+      ? toPercent(abLoop.end - rangeStart, effectiveDuration)
+      : null
 
   let thumbnailFrame = null
   if (thumbnails?.url && hover) {
-    const { interval = 10, columns, rows, tileWidth, tileHeight, count } = thumbnails
+    const {
+      interval = 10,
+      columns,
+      rows,
+      tileWidth,
+      tileHeight,
+      count
+    } = thumbnails
     const maxIndex = (count ?? columns * rows) - 1
-    const index = clamp(Math.floor((rangeStart + hover.time) / interval), 0, maxIndex)
+    const index = clamp(
+      Math.floor((rangeStart + hover.time) / interval),
+      0,
+      maxIndex
+    )
     const col = index % columns
     const row = Math.floor(index / columns)
     thumbnailFrame = { col, row, tileWidth, tileHeight, url: thumbnails.url }
   }
 
   return (
-    <div className="pv-seek">
+    <div className='pv-seek'>
       <div
         ref={trackRef}
-        className={`pv-seek__track${dragging ? ' pv-seek__track--dragging' : ''}`}
-        role="slider"
+        className={`pv-seek__track${
+          dragging ? ' pv-seek__track--dragging' : ''
+        }`}
+        role='slider'
         tabIndex={0}
         aria-label={hasDvrWindow ? 'Seek within live window' : 'Seek'}
         aria-valuemin={0}
-        aria-valuemax={Number.isFinite(effectiveDuration) ? effectiveDuration : 0}
-        aria-valuenow={Number.isFinite(effectiveCurrentTime) ? effectiveCurrentTime : 0}
-        aria-valuetext={isLive ? (atLiveEdge ? 'Live' : `${formatTime(effectiveDuration - effectiveCurrentTime)} behind live`) : formatTime(currentTime)}
+        aria-valuemax={
+          Number.isFinite(effectiveDuration) ? effectiveDuration : 0
+        }
+        aria-valuenow={
+          Number.isFinite(effectiveCurrentTime) ? effectiveCurrentTime : 0
+        }
+        aria-valuetext={
+          isLive
+            ? atLiveEdge
+              ? 'Live'
+              : `${formatTime(
+                  effectiveDuration - effectiveCurrentTime
+                )} behind live`
+            : formatTime(currentTime)
+        }
         onPointerDown={handlePointerDown}
-        onPointerMove={(e) => handleMove(e.clientX)}
+        onPointerMove={e => handleMove(e.clientX)}
         onPointerUp={handlePointerUp}
         onPointerLeave={() => !dragging && setHover(null)}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowRight') onSeek(clamp(currentTime + 5, rangeStart, rangeStart + effectiveDuration))
-          else if (e.key === 'ArrowLeft') onSeek(clamp(currentTime - 5, rangeStart, rangeStart + effectiveDuration))
+        onKeyDown={e => {
+          if (e.key === 'ArrowRight')
+            onSeek(
+              clamp(currentTime + 5, rangeStart, rangeStart + effectiveDuration)
+            )
+          else if (e.key === 'ArrowLeft')
+            onSeek(
+              clamp(currentTime - 5, rangeStart, rangeStart + effectiveDuration)
+            )
           else return
           e.preventDefault()
         }}
       >
-        <div className="pv-seek__bg" />
-        <div className="pv-seek__buffered" style={{ width: `${bufferedPct}%` }} />
-        <div className={`pv-seek__played${isLive ? ' pv-seek__played--live' : ''}`} style={{ width: `${playedPct}%` }} />
+        <div className='pv-seek__bg' />
+        <div
+          className='pv-seek__buffered'
+          style={{ width: `${bufferedPct}%` }}
+        />
+        <div
+          className={`pv-seek__played${isLive ? ' pv-seek__played--live' : ''}`}
+          style={{ width: `${playedPct}%` }}
+        />
         {loopStartPct !== null && loopEndPct !== null && (
           <div
-            className="pv-seek__loop-region"
-            style={{ left: `${loopStartPct}%`, width: `${Math.max(loopEndPct - loopStartPct, 0)}%` }}
+            className='pv-seek__loop-region'
+            style={{
+              left: `${loopStartPct}%`,
+              width: `${Math.max(loopEndPct - loopStartPct, 0)}%`
+            }}
           />
         )}
-        {!hasDvrWindow && chapters && chapters.length > 1 && duration > 0 && chapters.map((chapter) => (
-          <div
-            key={chapter.time}
-            className="pv-seek__chapter-mark"
-            style={{ left: `${toPercent(chapter.time, duration)}%` }}
-          />
-        ))}
-        <div className="pv-seek__thumb" style={{ left: `${playedPct}%` }} />
+        {!hasDvrWindow &&
+          chapters &&
+          chapters.length > 1 &&
+          duration > 0 &&
+          chapters.map(chapter => (
+            <div
+              key={chapter.time}
+              className='pv-seek__chapter-mark'
+              style={{ left: `${toPercent(chapter.time, duration)}%` }}
+            />
+          ))}
+        <div className='pv-seek__thumb' style={{ left: `${playedPct}%` }} />
         {hover && (
           <>
             {thumbnailFrame && (
               <div
-                className="pv-seek__preview"
+                className='pv-seek__preview'
                 style={{
                   left: hover.x,
                   width: thumbnailFrame.tileWidth,
-                  height: thumbnailFrame.tileHeight,
+                  height: thumbnailFrame.tileHeight
                 }}
               >
                 <div
-                  className="pv-seek__preview-image"
+                  className='pv-seek__preview-image'
                   style={{
                     backgroundImage: `url(${thumbnailFrame.url})`,
-                    backgroundPosition: `-${thumbnailFrame.col * thumbnailFrame.tileWidth}px -${thumbnailFrame.row * thumbnailFrame.tileHeight}px`,
+                    backgroundPosition: `-${
+                      thumbnailFrame.col * thumbnailFrame.tileWidth
+                    }px -${thumbnailFrame.row * thumbnailFrame.tileHeight}px`,
                     width: thumbnailFrame.tileWidth,
-                    height: thumbnailFrame.tileHeight,
+                    height: thumbnailFrame.tileHeight
                   }}
                 />
               </div>
             )}
             <div
-              className="pv-seek__tooltip"
-              style={{ left: hover.x, bottom: thumbnailFrame ? 28 + thumbnailFrame.tileHeight + 8 : undefined }}
+              className='pv-seek__tooltip'
+              style={{
+                left: hover.x,
+                bottom: thumbnailFrame
+                  ? 28 + thumbnailFrame.tileHeight + 8
+                  : undefined
+              }}
             >
               {!hasDvrWindow && chapterAt(chapters, hover.time)?.title && (
-                <span className="pv-seek__tooltip-chapter">{chapterAt(chapters, hover.time).title}</span>
+                <span className='pv-seek__tooltip-chapter'>
+                  {chapterAt(chapters, hover.time).title}
+                </span>
               )}
-              {hasDvrWindow ? `-${formatTime(effectiveDuration - hover.time)}` : formatTime(hover.time)}
+              {hasDvrWindow
+                ? `-${formatTime(effectiveDuration - hover.time)}`
+                : formatTime(hover.time)}
             </div>
           </>
         )}
@@ -205,7 +301,7 @@ function SeekBar({
 
 const SETTINGS_ROOT = 'root'
 
-function SettingsPanel({
+function SettingsPanel ({
   activeView,
   setActiveView,
   quality,
@@ -217,7 +313,7 @@ function SettingsPanel({
   showAudio,
   showSubtitles,
   showSpeed,
-  showSleepTimer,
+  showSleepTimer
 }) {
   if (activeView === 'quality') {
     return (
@@ -225,7 +321,7 @@ function SettingsPanel({
         levels={quality.levels}
         currentLevel={quality.currentLevel}
         autoResolvedHeight={quality.autoResolvedHeight}
-        onSelect={(index) => {
+        onSelect={index => {
           quality.onSelect(index)
           setActiveView(SETTINGS_ROOT)
         }}
@@ -238,7 +334,7 @@ function SettingsPanel({
       <AudioMenu
         tracks={audio.tracks}
         currentTrack={audio.currentTrack}
-        onSelect={(id) => {
+        onSelect={id => {
           audio.onSelect(id)
           setActiveView(SETTINGS_ROOT)
         }}
@@ -251,7 +347,7 @@ function SettingsPanel({
       <SubtitleMenu
         tracks={subtitles.tracks}
         currentTrack={subtitles.currentTrack}
-        onSelect={(id) => {
+        onSelect={id => {
           subtitles.onSelect(id)
           setActiveView(SETTINGS_ROOT)
         }}
@@ -264,7 +360,7 @@ function SettingsPanel({
       <SpeedMenu
         options={speed.options}
         current={speed.current}
-        onSelect={(rate) => {
+        onSelect={rate => {
           speed.onSelect(rate)
           setActiveView(SETTINGS_ROOT)
         }}
@@ -276,7 +372,7 @@ function SettingsPanel({
     return (
       <SleepTimerMenu
         current={sleepTimer.current}
-        onSelect={(minutes) => {
+        onSelect={minutes => {
           sleepTimer.onSelect(minutes)
           setActiveView(SETTINGS_ROOT)
         }}
@@ -285,60 +381,89 @@ function SettingsPanel({
     )
   }
 
-  const qualityValue = quality.currentLevel === -1
-    ? `Auto${quality.autoResolvedHeight ? ` (${quality.autoResolvedHeight}p)` : ''}`
-    : quality.levels.find((l) => l.index === quality.currentLevel)?.label || 'Auto'
-  const audioValue = audio.tracks.find((t) => t.id === audio.currentTrack)?.label || '—'
-  const subtitleValue = subtitles.currentTrack === -1
-    ? 'Off'
-    : subtitles.tracks.find((t) => t.id === subtitles.currentTrack)?.label || 'Off'
-  const sleepTimerValue = SLEEP_TIMER_OPTIONS.find((o) => o.minutes === sleepTimer?.current)?.label || 'Off'
+  const qualityValue =
+    quality.currentLevel === -1
+      ? `Auto${
+          quality.autoResolvedHeight ? ` (${quality.autoResolvedHeight}p)` : ''
+        }`
+      : quality.levels.find(l => l.index === quality.currentLevel)?.label ||
+        'Auto'
+  const audioValue =
+    audio.tracks.find(t => t.id === audio.currentTrack)?.label || '—'
+  const subtitleValue =
+    subtitles.currentTrack === -1
+      ? 'Off'
+      : subtitles.tracks.find(t => t.id === subtitles.currentTrack)?.label ||
+        'Off'
+  const sleepTimerValue =
+    SLEEP_TIMER_OPTIONS.find(o => o.minutes === sleepTimer?.current)?.label ||
+    'Off'
 
   return (
-    <div className="pv-submenu" role="menu" aria-label="Settings">
-      <div className="pv-submenu__list">
+    <div className='pv-submenu' role='menu' aria-label='Settings'>
+      <div className='pv-submenu__list'>
         {showQuality && (
-          <button type="button" className="pv-submenu__row" onClick={() => setActiveView('quality')}>
+          <button
+            type='button'
+            className='pv-submenu__row'
+            onClick={() => setActiveView('quality')}
+          >
             <span>Quality</span>
-            <span className="pv-submenu__row-value">
+            <span className='pv-submenu__row-value'>
               {qualityValue}
-              <ChevronRight size={16} aria-hidden="true" />
+              <ChevronRight size={16} aria-hidden='true' />
             </span>
           </button>
         )}
         {showSpeed && (
-          <button type="button" className="pv-submenu__row" onClick={() => setActiveView('speed')}>
+          <button
+            type='button'
+            className='pv-submenu__row'
+            onClick={() => setActiveView('speed')}
+          >
             <span>Playback speed</span>
-            <span className="pv-submenu__row-value">
+            <span className='pv-submenu__row-value'>
               {speedLabel(speed.current)}
-              <ChevronRight size={16} aria-hidden="true" />
+              <ChevronRight size={16} aria-hidden='true' />
             </span>
           </button>
         )}
         {showAudio && (
-          <button type="button" className="pv-submenu__row" onClick={() => setActiveView('audio')}>
+          <button
+            type='button'
+            className='pv-submenu__row'
+            onClick={() => setActiveView('audio')}
+          >
             <span>Audio</span>
-            <span className="pv-submenu__row-value">
+            <span className='pv-submenu__row-value'>
               {audioValue}
-              <ChevronRight size={16} aria-hidden="true" />
+              <ChevronRight size={16} aria-hidden='true' />
             </span>
           </button>
         )}
         {showSubtitles && (
-          <button type="button" className="pv-submenu__row" onClick={() => setActiveView('subtitles')}>
+          <button
+            type='button'
+            className='pv-submenu__row'
+            onClick={() => setActiveView('subtitles')}
+          >
             <span>Subtitles</span>
-            <span className="pv-submenu__row-value">
+            <span className='pv-submenu__row-value'>
               {subtitleValue}
-              <ChevronRight size={16} aria-hidden="true" />
+              <ChevronRight size={16} aria-hidden='true' />
             </span>
           </button>
         )}
         {showSleepTimer && (
-          <button type="button" className="pv-submenu__row" onClick={() => setActiveView('sleepTimer')}>
+          <button
+            type='button'
+            className='pv-submenu__row'
+            onClick={() => setActiveView('sleepTimer')}
+          >
             <span>Sleep timer</span>
-            <span className="pv-submenu__row-value">
+            <span className='pv-submenu__row-value'>
               {sleepTimerValue}
-              <ChevronRight size={16} aria-hidden="true" />
+              <ChevronRight size={16} aria-hidden='true' />
             </span>
           </button>
         )}
@@ -347,13 +472,7 @@ function SettingsPanel({
   )
 }
 
-function PlayerControls({
-  visible,
-  state,
-  flags,
-  actions,
-  isMobile,
-}) {
+function PlayerControls ({ visible, state, flags, actions, isMobile }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [activeView, setActiveView] = useState(SETTINGS_ROOT)
   const settingsRef = useRef(null)
@@ -365,10 +484,11 @@ function PlayerControls({
 
   useEffect(() => {
     if (!settingsOpen) return undefined
-    const handlePointer = (e) => {
-      if (settingsRef.current && !settingsRef.current.contains(e.target)) closeSettings()
+    const handlePointer = e => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target))
+        closeSettings()
     }
-    const handleKey = (e) => {
+    const handleKey = e => {
       if (e.key === 'Escape') closeSettings()
     }
     document.addEventListener('pointerdown', handlePointer)
@@ -380,23 +500,40 @@ function PlayerControls({
   }, [settingsOpen, closeSettings])
 
   const toggleSettings = useCallback(() => {
-    setSettingsOpen((open) => {
+    setSettingsOpen(open => {
       if (open) setActiveView(SETTINGS_ROOT)
       return !open
     })
   }, [])
 
-  const VolumeIcon = state.muted || state.volume === 0 ? VolumeX : state.volume < 0.5 ? Volume1 : Volume2
+  const VolumeIcon =
+    state.muted || state.volume === 0
+      ? VolumeX
+      : state.volume < 0.5
+      ? Volume1
+      : Volume2
 
-  const anySubmenuEnabled = flags.qualitySelector || flags.audioSelector || flags.subtitleSelector || flags.playbackSpeed || flags.sleepTimer
+  const anySubmenuEnabled =
+    flags.qualitySelector ||
+    flags.audioSelector ||
+    flags.subtitleSelector ||
+    flags.playbackSpeed ||
+    flags.sleepTimer
 
-  const showCaptionsToggle = flags.subtitleSelector && state.subtitleTracks.length > 0
+  const showCaptionsToggle =
+    flags.subtitleSelector && state.subtitleTracks.length > 0
   const currentChapter = chapterAt(state.chapters, state.currentTime)
 
-  const durationLabel = state.isLive ? null : formatTime(state.duration, state.duration >= 3600)
-  const timeLabel = state.isLive ? null : formatTime(state.currentTime, state.duration >= 3600)
-  const atLiveEdge = !state.isLive || !(state.seekableEnd > state.seekableStart)
-    || state.seekableEnd - state.currentTime <= LIVE_EDGE_THRESHOLD
+  const durationLabel = state.isLive
+    ? null
+    : formatTime(state.duration, state.duration >= 3600)
+  const timeLabel = state.isLive
+    ? null
+    : formatTime(state.currentTime, state.duration >= 3600)
+  const atLiveEdge =
+    !state.isLive ||
+    !(state.seekableEnd > state.seekableStart) ||
+    state.seekableEnd - state.currentTime <= LIVE_EDGE_THRESHOLD
 
   return (
     <div className={`pv-controls${visible ? ' pv-controls--visible' : ''}`}>
@@ -415,132 +552,160 @@ function PlayerControls({
         onScrubEnd={actions.onScrubEnd}
       />
 
-      <div className="pv-controls__row">
-        <div className="pv-controls__group">
+      <div className='pv-controls__row'>
+        <div className='pv-controls__group'>
           <button
-            type="button"
-            className="pv-btn pv-btn--primary"
+            type='button'
+            className='pv-btn pv-btn--primary'
             onClick={actions.togglePlay}
             aria-label={state.playing ? 'Pause video' : 'Play video'}
           >
-            {state.playing ? <Pause size={22} aria-hidden="true" /> : <Play size={22} aria-hidden="true" />}
+            {state.playing ? (
+              <Pause size={22} aria-hidden='true' />
+            ) : (
+              <Play size={22} aria-hidden='true' />
+            )}
           </button>
 
           {!isMobile && (
             <>
-              <button type="button" className="pv-btn" onClick={() => actions.seekBy(-10)} aria-label="Rewind 10 seconds">
-                <RotateCcw size={20} aria-hidden="true" />
+              <button
+                type='button'
+                className='pv-btn'
+                onClick={() => actions.seekBy(-10)}
+                aria-label='Rewind 10 seconds'
+              >
+                <RotateCcw size={20} aria-hidden='true' />
               </button>
-              <button type="button" className="pv-btn" onClick={() => actions.seekBy(10)} aria-label="Forward 10 seconds">
-                <RotateCw size={20} aria-hidden="true" />
+              <button
+                type='button'
+                className='pv-btn'
+                onClick={() => actions.seekBy(10)}
+                aria-label='Forward 10 seconds'
+              >
+                <RotateCw size={20} aria-hidden='true' />
               </button>
             </>
           )}
 
           {!isMobile && (
-            <div className="pv-volume">
+            <div className='pv-volume'>
               <button
-                type="button"
-                className="pv-btn"
+                type='button'
+                className='pv-btn'
                 onClick={actions.toggleMute}
                 aria-label={state.muted ? 'Unmute' : 'Mute'}
               >
-                <VolumeIcon size={20} aria-hidden="true" />
+                <VolumeIcon size={20} aria-hidden='true' />
               </button>
               <input
-                type="range"
-                className="pv-volume__slider"
+                type='range'
+                className='pv-volume__slider'
                 min={0}
                 max={1}
                 step={0.01}
                 value={state.muted ? 0 : state.volume}
-                onChange={(e) => actions.setVolume(Number(e.target.value))}
-                aria-label="Volume"
+                onChange={e => actions.setVolume(Number(e.target.value))}
+                aria-label='Volume'
               />
             </div>
           )}
 
-          <div className="pv-time" aria-live="off">
+          <div className='pv-time' aria-live='off'>
             {state.isLive ? (
               <button
-                type="button"
+                type='button'
                 className={`pv-live${atLiveEdge ? ' pv-live--edge' : ''}`}
                 onClick={actions.goLive}
                 aria-label={atLiveEdge ? 'At live edge' : 'Jump to live edge'}
               >
-                <Radio size={14} aria-hidden="true" />
+                <Radio size={14} aria-hidden='true' />
                 LIVE
               </button>
             ) : (
               <span>
-                {timeLabel} <span className="pv-time__sep">/</span> {durationLabel}
+                {timeLabel} <span className='pv-time__sep'>/</span>{' '}
+                {durationLabel}
               </span>
             )}
           </div>
 
-          {currentChapter && !isMobile && <span className="pv-chapter-label">{currentChapter.title}</span>}
+          {currentChapter && !isMobile && (
+            <span className='pv-chapter-label'>{currentChapter.title}</span>
+          )}
         </div>
 
-        <div className="pv-controls__group">
+        <div className='pv-controls__group'>
           {showCaptionsToggle && (
             <button
-              type="button"
-              className={`pv-btn${state.subtitleTrack !== -1 ? ' pv-btn--active' : ''}`}
+              type='button'
+              className={`pv-btn${
+                state.subtitleTrack !== -1 ? ' pv-btn--active' : ''
+              }`}
               onClick={actions.toggleCaptions}
-              aria-label="Toggle captions"
+              aria-label='Toggle captions'
               aria-pressed={state.subtitleTrack !== -1}
             >
-              <Captions size={20} aria-hidden="true" />
+              <Captions size={20} aria-hidden='true' />
             </button>
           )}
 
           {flags.audioSelector && state.audioTracks.length > 1 && (
             <button
-              type="button"
-              className="pv-btn"
+              type='button'
+              className='pv-btn'
               onClick={() => {
                 setSettingsOpen(true)
                 setActiveView('audio')
               }}
-              aria-label="Audio track"
+              aria-label='Audio track'
             >
-              <AudioLines size={20} aria-hidden="true" />
+              <AudioLines size={20} aria-hidden='true' />
             </button>
           )}
 
           {flags.playbackSpeed && (
             <button
-              type="button"
-              className="pv-btn pv-btn--desktop-only"
+              type='button'
+              className='pv-btn pv-btn--desktop-only'
               onClick={() => {
                 setSettingsOpen(true)
                 setActiveView('speed')
               }}
-              aria-label="Playback speed"
+              aria-label='Playback speed'
             >
-              <Gauge size={20} aria-hidden="true" />
+              <Gauge size={20} aria-hidden='true' />
             </button>
           )}
 
           {flags.share && (
-            <button type="button" className="pv-btn pv-btn--desktop-only" onClick={actions.onShare} aria-label="Share">
-              <Share2 size={20} aria-hidden="true" />
+            <button
+              type='button'
+              className='pv-btn pv-btn--desktop-only'
+              onClick={actions.onShare}
+              aria-label='Share'
+            >
+              <Share2 size={20} aria-hidden='true' />
             </button>
           )}
 
           {anySubmenuEnabled && (
-            <div className="pv-settings" ref={settingsRef}>
+            <div className='pv-settings' ref={settingsRef}>
               <button
-                type="button"
+                type='button'
                 className={`pv-btn${settingsOpen ? ' pv-btn--active' : ''}`}
                 onClick={toggleSettings}
-                aria-label="Settings"
+                aria-label='Settings'
                 aria-expanded={settingsOpen}
               >
-                <Settings size={20} aria-hidden="true" />
+                <Settings size={20} aria-hidden='true' />
               </button>
               {settingsOpen && (
-                <div className="pv-settings__panel" role="dialog" aria-label="Player settings">
+                <div
+                  className='pv-settings__panel'
+                  role='dialog'
+                  aria-label='Player settings'
+                >
                   <SettingsPanel
                     activeView={activeView}
                     setActiveView={setActiveView}
@@ -553,26 +718,26 @@ function PlayerControls({
                       levels: state.levels,
                       currentLevel: state.selectedQuality,
                       autoResolvedHeight: state.autoResolvedHeight,
-                      onSelect: actions.setQuality,
+                      onSelect: actions.setQuality
                     }}
                     audio={{
                       tracks: state.audioTracks,
                       currentTrack: state.selectedAudio,
-                      onSelect: actions.setAudioTrack,
+                      onSelect: actions.setAudioTrack
                     }}
                     subtitles={{
                       tracks: state.subtitleTracks,
                       currentTrack: state.subtitleTrack,
-                      onSelect: actions.setSubtitleTrack,
+                      onSelect: actions.setSubtitleTrack
                     }}
                     speed={{
                       options: state.speedOptions,
                       current: state.playbackRate,
-                      onSelect: actions.setPlaybackRate,
+                      onSelect: actions.setPlaybackRate
                     }}
                     sleepTimer={{
                       current: state.sleepTimerMinutes,
-                      onSelect: actions.setSleepTimer,
+                      onSelect: actions.setSleepTimer
                     }}
                   />
                 </div>
@@ -582,37 +747,45 @@ function PlayerControls({
 
           {flags.theatreMode && !isMobile && (
             <button
-              type="button"
+              type='button'
               className={`pv-btn${state.theatreMode ? ' pv-btn--active' : ''}`}
               onClick={actions.toggleTheatre}
-              aria-label={state.theatreMode ? 'Exit theatre mode' : 'Theatre mode'}
+              aria-label={
+                state.theatreMode ? 'Exit theatre mode' : 'Theatre mode'
+              }
               aria-pressed={state.theatreMode}
             >
-              <RectangleHorizontal size={20} aria-hidden="true" />
+              <RectangleHorizontal size={20} aria-hidden='true' />
             </button>
           )}
 
           {flags.pictureInPicture && state.pipSupported && (
             <button
-              type="button"
+              type='button'
               className={`pv-btn${state.pip ? ' pv-btn--active' : ''}`}
               onClick={actions.togglePiP}
-              aria-label={state.pip ? 'Exit picture-in-picture' : 'Picture-in-picture'}
+              aria-label={
+                state.pip ? 'Exit picture-in-picture' : 'Picture-in-picture'
+              }
               aria-pressed={state.pip}
             >
-              <PictureInPicture2 size={20} aria-hidden="true" />
+              <PictureInPicture2 size={20} aria-hidden='true' />
             </button>
           )}
 
           {flags.fullscreen && (
             <button
-              type="button"
-              className="pv-btn"
+              type='button'
+              className='pv-btn'
               onClick={actions.toggleFullscreen}
               aria-label={state.fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
               aria-pressed={state.fullscreen}
             >
-              {state.fullscreen ? <Minimize size={20} aria-hidden="true" /> : <Maximize size={20} aria-hidden="true" />}
+              {state.fullscreen ? (
+                <Minimize size={20} aria-hidden='true' />
+              ) : (
+                <Maximize size={20} aria-hidden='true' />
+              )}
             </button>
           )}
         </div>

@@ -3,8 +3,9 @@ import { IMA_SDK_URL } from '../data/adsConfig'
 
 let sdkPromise = null
 
-function loadImaSdk() {
-  if (typeof window === 'undefined') return Promise.reject(new Error('no window'))
+function loadImaSdk () {
+  if (typeof window === 'undefined')
+    return Promise.reject(new Error('no window'))
   if (window.google?.ima) return Promise.resolve(window.google.ima)
   if (sdkPromise) return sdkPromise
 
@@ -18,7 +19,7 @@ function loadImaSdk() {
     }
     script.onerror = () => reject(new Error('Failed to load the IMA SDK'))
     document.head.appendChild(script)
-  }).catch((err) => {
+  }).catch(err => {
     sdkPromise = null
     throw err
   })
@@ -32,14 +33,21 @@ function loadImaSdk() {
  * the creative itself is swallowed and simply resumes/starts content
  * playback — a broken ad must never block the actual video.
  */
-export default function useImaAds({ adTagUrl, src, videoRef, containerRef, onContentPauseRequested, onContentResumeRequested }) {
+export default function useImaAds ({
+  adTagUrl,
+  src,
+  videoRef,
+  containerRef,
+  onContentPauseRequested,
+  onContentResumeRequested
+}) {
   const [adState, setAdState] = useState({
     loading: false,
     playing: false,
     skippable: false,
     remaining: 0,
     duration: 0,
-    error: null,
+    error: null
   })
 
   const adsLoaderRef = useRef(null)
@@ -78,13 +86,16 @@ export default function useImaAds({ adTagUrl, src, videoRef, containerRef, onCon
     try {
       ima = await loadImaSdk()
     } catch (err) {
-      setAdState((s) => ({ ...s, error: err.message }))
+      setAdState(s => ({ ...s, error: err.message }))
       return
     }
 
     try {
       ima.settings.setDisableCustomPlaybackForIOS10Plus(true)
-      const displayContainer = new ima.AdDisplayContainer(containerRef.current, videoRef.current)
+      const displayContainer = new ima.AdDisplayContainer(
+        containerRef.current,
+        videoRef.current
+      )
       displayContainer.initialize()
       displayContainerRef.current = displayContainer
 
@@ -93,53 +104,84 @@ export default function useImaAds({ adTagUrl, src, videoRef, containerRef, onCon
 
       adsLoader.addEventListener(
         ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,
-        (event) => {
+        event => {
           const adsRenderingSettings = new ima.AdsRenderingSettings()
           adsRenderingSettings.restoreCustomPlaybackStateOnAdBreakComplete = true
-          const adsManager = event.getAdsManager(videoRef.current, adsRenderingSettings)
+          const adsManager = event.getAdsManager(
+            videoRef.current,
+            adsRenderingSettings
+          )
           adsManagerRef.current = adsManager
 
-          adsManager.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, (e) => {
-            setAdState((s) => ({ ...s, error: e.getError?.().toString() || 'Ad error', playing: false }))
+          adsManager.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, e => {
+            setAdState(s => ({
+              ...s,
+              error: e.getError?.().toString() || 'Ad error',
+              playing: false
+            }))
             adsManager.destroy()
             callbacksRef.current.onContentResumeRequested?.()
           })
-          adsManager.addEventListener(ima.AdEvent.Type.CONTENT_PAUSE_REQUESTED, () => {
-            setAdState((s) => ({ ...s, playing: true }))
-            callbacksRef.current.onContentPauseRequested?.()
-          })
-          adsManager.addEventListener(ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, () => {
-            setAdState((s) => ({ ...s, playing: false, remaining: 0, duration: 0 }))
-            callbacksRef.current.onContentResumeRequested?.()
-          })
-          adsManager.addEventListener(ima.AdEvent.Type.ALL_ADS_COMPLETED, () => {
-            setAdState((s) => ({ ...s, playing: false }))
-          })
+          adsManager.addEventListener(
+            ima.AdEvent.Type.CONTENT_PAUSE_REQUESTED,
+            () => {
+              setAdState(s => ({ ...s, playing: true }))
+              callbacksRef.current.onContentPauseRequested?.()
+            }
+          )
+          adsManager.addEventListener(
+            ima.AdEvent.Type.CONTENT_RESUME_REQUESTED,
+            () => {
+              setAdState(s => ({
+                ...s,
+                playing: false,
+                remaining: 0,
+                duration: 0
+              }))
+              callbacksRef.current.onContentResumeRequested?.()
+            }
+          )
+          adsManager.addEventListener(
+            ima.AdEvent.Type.ALL_ADS_COMPLETED,
+            () => {
+              setAdState(s => ({ ...s, playing: false }))
+            }
+          )
           adsManager.addEventListener(ima.AdEvent.Type.SKIPPED, () => {
-            setAdState((s) => ({ ...s, playing: false }))
+            setAdState(s => ({ ...s, playing: false }))
           })
-          adsManager.addEventListener(ima.AdEvent.Type.AD_PROGRESS, (e) => {
+          adsManager.addEventListener(ima.AdEvent.Type.AD_PROGRESS, e => {
             const data = e.getAdData()
             if (!data) return
-            setAdState((s) => ({
+            setAdState(s => ({
               ...s,
               duration: data.duration || 0,
-              remaining: Math.max((data.duration || 0) - (data.currentTime || 0), 0),
-              skippable: adsManager.getAdSkippableState?.() || false,
+              remaining: Math.max(
+                (data.duration || 0) - (data.currentTime || 0),
+                0
+              ),
+              skippable: adsManager.getAdSkippableState?.() || false
             }))
           })
 
           try {
-            adsManager.init(videoRef.current.clientWidth, videoRef.current.clientHeight, ima.ViewMode.NORMAL)
+            adsManager.init(
+              videoRef.current.clientWidth,
+              videoRef.current.clientHeight,
+              ima.ViewMode.NORMAL
+            )
             adsManager.start()
           } catch {
             callbacksRef.current.onContentResumeRequested?.()
           }
-        },
+        }
       )
 
-      adsLoader.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, (e) => {
-        setAdState((s) => ({ ...s, error: e.getError?.().toString() || 'Ad load error' }))
+      adsLoader.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, e => {
+        setAdState(s => ({
+          ...s,
+          error: e.getError?.().toString() || 'Ad load error'
+        }))
         callbacksRef.current.onContentResumeRequested?.()
       })
 
@@ -152,7 +194,7 @@ export default function useImaAds({ adTagUrl, src, videoRef, containerRef, onCon
 
       adsLoader.requestAds(adsRequest)
     } catch (err) {
-      setAdState((s) => ({ ...s, error: err.message }))
+      setAdState(s => ({ ...s, error: err.message }))
       callbacksRef.current.onContentResumeRequested?.()
     }
   }, [adTagUrl, videoRef, containerRef])
@@ -162,11 +204,12 @@ export default function useImaAds({ adTagUrl, src, videoRef, containerRef, onCon
   }, [])
 
   const resize = useCallback(() => {
-    if (!adsManagerRef.current || !videoRef.current || !window.google?.ima) return
+    if (!adsManagerRef.current || !videoRef.current || !window.google?.ima)
+      return
     adsManagerRef.current.resize(
       videoRef.current.clientWidth,
       videoRef.current.clientHeight,
-      window.google.ima.ViewMode.NORMAL,
+      window.google.ima.ViewMode.NORMAL
     )
   }, [videoRef])
 

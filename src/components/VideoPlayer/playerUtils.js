@@ -10,14 +10,14 @@ export const STORAGE_KEYS = {
   quality: `${STORAGE_PREFIX}quality`,
   subtitle: `${STORAGE_PREFIX}subtitle`,
   theme: `${STORAGE_PREFIX}theme`,
-  theatreMode: `${STORAGE_PREFIX}theatre`,
+  theatreMode: `${STORAGE_PREFIX}theatre`
 }
 
 /**
  * Safely reads a JSON value from localStorage. Never throws — corrupted or
  * missing values fall back to `fallback` instead of crashing the player.
  */
-export function readStorage(key, fallback) {
+export function readStorage (key, fallback) {
   try {
     const raw = window.localStorage.getItem(key)
     if (raw === null || raw === undefined) return fallback
@@ -31,7 +31,7 @@ export function readStorage(key, fallback) {
  * Safely writes a JSON value to localStorage. Never throws (private
  * browsing / quota errors are swallowed).
  */
-export function writeStorage(key, value) {
+export function writeStorage (key, value) {
   try {
     window.localStorage.setItem(key, JSON.stringify(value))
   } catch {
@@ -44,8 +44,9 @@ export function writeStorage(key, value) {
  * segment when needed (or when `forceHours` is requested for a duration
  * that is itself over an hour, so 00:12 doesn't look wrong next to 1:02:00).
  */
-export function formatTime(seconds, forceHours = false) {
-  if (!Number.isFinite(seconds) || seconds < 0) return forceHours ? '0:00:00' : '0:00'
+export function formatTime (seconds, forceHours = false) {
+  if (!Number.isFinite(seconds) || seconds < 0)
+    return forceHours ? '0:00:00' : '0:00'
 
   const totalSeconds = Math.floor(seconds)
   const hours = Math.floor(totalSeconds / 3600)
@@ -53,13 +54,15 @@ export function formatTime(seconds, forceHours = false) {
   const secs = totalSeconds % 60
 
   if (hours > 0 || forceHours) {
-    return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(
+      secs
+    ).padStart(2, '0')}`
   }
   return `${minutes}:${String(secs).padStart(2, '0')}`
 }
 
 /** Detects the media type from a source URL. */
-export function detectSourceType(src) {
+export function detectSourceType (src) {
   if (!src || typeof src !== 'string') return 'unknown'
 
   let pathname = src
@@ -80,7 +83,7 @@ export function detectSourceType(src) {
 }
 
 /** Only http(s) and relative/blob URLs are allowed as playback sources. */
-export function isValidStreamUrl(src) {
+export function isValidStreamUrl (src) {
   if (!src || typeof src !== 'string') return false
   try {
     const url = new URL(src, window.location.href)
@@ -91,7 +94,7 @@ export function isValidStreamUrl(src) {
 }
 
 /** Formats a bits-per-second number as a human readable Mbps/Kbps string. */
-export function formatBitrate(bitsPerSecond) {
+export function formatBitrate (bitsPerSecond) {
   if (!Number.isFinite(bitsPerSecond) || bitsPerSecond <= 0) return null
   const mbps = bitsPerSecond / 1_000_000
   if (mbps >= 1) return `${mbps.toFixed(1)} Mbps`
@@ -99,7 +102,7 @@ export function formatBitrate(bitsPerSecond) {
 }
 
 /** Human-friendly label for an hls.js level, e.g. "1080p", "720p60". */
-export function levelLabel(level) {
+export function levelLabel (level) {
   if (!level) return 'Unknown'
   const height = level.height
   if (!height) return level.name || 'Auto'
@@ -111,7 +114,9 @@ export function levelLabel(level) {
 let languageDisplayNames = null
 try {
   languageDisplayNames =
-    typeof Intl !== 'undefined' && Intl.DisplayNames ? new Intl.DisplayNames(['en'], { type: 'language' }) : null
+    typeof Intl !== 'undefined' && Intl.DisplayNames
+      ? new Intl.DisplayNames(['en'], { type: 'language' })
+      : null
 } catch {
   languageDisplayNames = null
 }
@@ -122,11 +127,17 @@ try {
  * standard `Intl.DisplayNames` API — never a hardcoded language list, and
  * never invented for a code the runtime doesn't recognize.
  */
-export function languageName(code) {
-  if (!code || code.toLowerCase() === 'und' || !languageDisplayNames) return null
+export function languageName (code) {
+  if (!code || code.toLowerCase() === 'und' || !languageDisplayNames)
+    return null
   try {
     const name = languageDisplayNames.of(code)
-    if (name && name.toLowerCase() !== code.toLowerCase() && name.toLowerCase() !== 'root') return name
+    if (
+      name &&
+      name.toLowerCase() !== code.toLowerCase() &&
+      name.toLowerCase() !== 'root'
+    )
+      return name
   } catch {
     // malformed/unrecognized subtag
   }
@@ -134,9 +145,12 @@ export function languageName(code) {
 }
 
 /** Best-effort human label for an HLS audio/subtitle track. */
-export function trackLabel(track, index) {
+export function trackLabel (track, index) {
   if (!track) return `Track ${index + 1}`
-  const name = track.name && track.name.toLowerCase() !== (track.lang || '').toLowerCase() ? track.name : null
+  const name =
+    track.name && track.name.toLowerCase() !== (track.lang || '').toLowerCase()
+      ? track.name
+      : null
   return (
     name ||
     languageName(track.lang) ||
@@ -147,7 +161,7 @@ export function trackLabel(track, index) {
 }
 
 /** Maps an HLS #EXT-X-MEDIA CHANNELS attribute (a channel count) to a label. */
-export function formatChannels(channels) {
+export function formatChannels (channels) {
   if (!channels) return null
   const count = parseInt(channels, 10)
   if (!Number.isFinite(count) || count <= 0) return null
@@ -158,17 +172,17 @@ export function formatChannels(channels) {
   return `${count}-channel`
 }
 
-export function clamp(value, min, max) {
+export function clamp (value, min, max) {
   return Math.min(Math.max(value, min), max)
 }
 
 /** Percentage of `value` within [0, total], clamped to [0, 100]. */
-export function toPercent(value, total) {
+export function toPercent (value, total) {
   if (!Number.isFinite(total) || total <= 0) return 0
   return clamp((value / total) * 100, 0, 100)
 }
 
-export function isTypingTarget(el) {
+export function isTypingTarget (el) {
   if (!el) return false
   const tag = el.tagName ? el.tagName.toLowerCase() : ''
   return (
@@ -181,7 +195,7 @@ export function isTypingTarget(el) {
 
 export const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 
-export function speedLabel(rate) {
+export function speedLabel (rate) {
   return rate === 1 ? 'Normal' : `${rate}x`
 }
 
@@ -190,5 +204,5 @@ export const SLEEP_TIMER_OPTIONS = [
   { minutes: 10, label: '10 minutes' },
   { minutes: 30, label: '30 minutes' },
   { minutes: 60, label: '1 hour' },
-  { minutes: 'end', label: 'End of video' },
+  { minutes: 'end', label: 'End of video' }
 ]
