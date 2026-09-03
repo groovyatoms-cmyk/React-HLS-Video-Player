@@ -158,7 +158,12 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   const [pip, setPip] = useState(false)
   const [pipSupported, setPipSupported] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
-  const [pulse, setPulse] = useState(null)
+  const [pulse, setPulse] = useState(null) // { type, id }
+  const pulseIdRef = useRef(0)
+  const triggerPulse = useCallback((type) => {
+    pulseIdRef.current += 1
+    setPulse({ type, id: pulseIdRef.current })
+  }, [])
   const [contextMenu, setContextMenu] = useState(null)
   const [statsVisible, setStatsVisible] = useState(false)
   const [skipInfo, setSkipInfo] = useState(null)
@@ -557,10 +562,10 @@ const VideoPlayer = forwardRef(function VideoPlayer(
       ads.requestAds()
     }
     const willPlay = el.paused || el.ended
-    setPulse(willPlay ? 'play' : 'pause')
+    triggerPulse(willPlay ? 'play' : 'pause')
     if (willPlay) mediaControls.play()
     else mediaControls.pause()
-  }, [adTagUrl, ads, mediaControls])
+  }, [adTagUrl, ads, mediaControls, triggerPulse])
 
   // ---- fullscreen ----------------------------------------------------------
   const enterFullscreen = useCallback(() => {
@@ -765,15 +770,15 @@ const VideoPlayer = forwardRef(function VideoPlayer(
       const ratio = (e.clientX - rect.left) / rect.width
       if (ratio < 0.33) {
         mediaControls.seekBy(-doubleClickSeekSeconds)
-        setPulse('rewind')
+        triggerPulse('rewind')
       } else if (ratio > 0.67) {
         mediaControls.seekBy(doubleClickSeekSeconds)
-        setPulse('forward')
+        triggerPulse('forward')
       } else if (fullscreenEnabled) {
         toggleFullscreen()
       }
     },
-    [doubleClickToSeek, doubleClickSeekSeconds, fullscreenEnabled, mediaControls, toggleFullscreen],
+    [doubleClickToSeek, doubleClickSeekSeconds, fullscreenEnabled, mediaControls, toggleFullscreen, triggerPulse],
   )
 
   // ---- context menu -------------------------------------------------------------
@@ -942,11 +947,11 @@ const VideoPlayer = forwardRef(function VideoPlayer(
             )}
 
             {pulse && (
-              <div className="pv-pulse" key={`${pulse}-${currentTime.toFixed(1)}`} onAnimationEnd={() => setPulse(null)}>
-                {pulse === 'play' && <Play size={34} aria-hidden="true" />}
-                {pulse === 'pause' && <Pause size={34} aria-hidden="true" />}
-                {pulse === 'rewind' && <span className="pv-pulse__seek">-{doubleClickSeekSeconds}s</span>}
-                {pulse === 'forward' && <span className="pv-pulse__seek">+{doubleClickSeekSeconds}s</span>}
+              <div className="pv-pulse" key={pulse.id} onAnimationEnd={() => setPulse(null)}>
+                {pulse.type === 'play' && <Play size={34} aria-hidden="true" />}
+                {pulse.type === 'pause' && <Pause size={34} aria-hidden="true" />}
+                {pulse.type === 'rewind' && <span className="pv-pulse__seek">-{doubleClickSeekSeconds}s</span>}
+                {pulse.type === 'forward' && <span className="pv-pulse__seek">+{doubleClickSeekSeconds}s</span>}
               </div>
             )}
 

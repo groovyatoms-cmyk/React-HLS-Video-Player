@@ -62,7 +62,10 @@
 }
 
 .pv-wrapper--theatre .pv-frame {
-  height: min(80vh, 100%);
+  /* `.pv-wrapper` has no explicit height of its own (it sizes to this
+     frame), so a `%`-based height here has no containing block to resolve
+     against and collapses to 0 — use a viewport-relative height instead. */
+  height: 80vh;
   width: 100%;
   aspect-ratio: unset;
 }
@@ -609,11 +612,9 @@
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.25), 0 0 10px var(--player-glow);
 }
 
-.pv-seek__track:hover .pv-seek__thumb,
 .pv-seek__track:hover .pv-seek__bg,
 .pv-seek__track:hover .pv-seek__buffered,
 .pv-seek__track:hover .pv-seek__played,
-.pv-seek__track--dragging .pv-seek__thumb,
 .pv-seek__track--dragging .pv-seek__bg,
 .pv-seek__track--dragging .pv-seek__buffered,
 .pv-seek__track--dragging .pv-seek__played {
