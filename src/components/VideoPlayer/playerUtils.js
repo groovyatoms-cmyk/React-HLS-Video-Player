@@ -145,3 +145,11 @@ export const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 export function speedLabel(rate) {
   return rate === 1 ? 'Normal' : `${rate}x`
 }
+
+export const SLEEP_TIMER_OPTIONS = [
+  { minutes: 0, label: 'Off' },
+  { minutes: 10, label: '10 minutes' },
+  { minutes: 30, label: '30 minutes' },
+  { minutes: 60, label: '1 hour' },
+  { minutes: 'end', label: 'End of video' },
+]

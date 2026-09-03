@@ -23,7 +23,8 @@ import QualityMenu from './QualityMenu'
 import AudioMenu from './AudioMenu'
 import SubtitleMenu from './SubtitleMenu'
 import SpeedMenu from './SpeedMenu'
-import { formatTime, speedLabel, toPercent, clamp } from './playerUtils'
+import SleepTimerMenu from './SleepTimerMenu'
+import { formatTime, speedLabel, toPercent, clamp, SLEEP_TIMER_OPTIONS } from './playerUtils'
 
 function chapterAt(chapters, time) {
   if (!chapters || chapters.length === 0) return null
@@ -45,6 +46,8 @@ function SeekBar({
   seekableStart,
   seekableEnd,
   chapters,
+  abLoop,
+  thumbnails,
   onSeek,
   onScrubStart,
   onScrubEnd,
@@ -109,6 +112,19 @@ function SeekBar({
   const bufferedPct = toPercent(effectiveBuffered, effectiveDuration)
   const atLiveEdge = hasDvrWindow && effectiveDuration - effectiveCurrentTime <= LIVE_EDGE_THRESHOLD
 
+  const loopStartPct = abLoop && !hasDvrWindow ? toPercent(abLoop.start - rangeStart, effectiveDuration) : null
+  const loopEndPct = abLoop?.end != null && !hasDvrWindow ? toPercent(abLoop.end - rangeStart, effectiveDuration) : null
+
+  let thumbnailFrame = null
+  if (thumbnails?.url && hover) {
+    const { interval = 10, columns, rows, tileWidth, tileHeight, count } = thumbnails
+    const maxIndex = (count ?? columns * rows) - 1
+    const index = clamp(Math.floor((rangeStart + hover.time) / interval), 0, maxIndex)
+    const col = index % columns
+    const row = Math.floor(index / columns)
+    thumbnailFrame = { col, row, tileWidth, tileHeight, url: thumbnails.url }
+  }
+
   return (
     <div className="pv-seek">
       <div
@@ -135,6 +151,12 @@ function SeekBar({
         <div className="pv-seek__bg" />
         <div className="pv-seek__buffered" style={{ width: `${bufferedPct}%` }} />
         <div className={`pv-seek__played${isLive ? ' pv-seek__played--live' : ''}`} style={{ width: `${playedPct}%` }} />
+        {loopStartPct !== null && loopEndPct !== null && (
+          <div
+            className="pv-seek__loop-region"
+            style={{ left: `${loopStartPct}%`, width: `${Math.max(loopEndPct - loopStartPct, 0)}%` }}
+          />
+        )}
         {!hasDvrWindow && chapters && chapters.length > 1 && duration > 0 && chapters.map((chapter) => (
           <div
             key={chapter.time}
@@ -144,12 +166,37 @@ function SeekBar({
         ))}
         <div className="pv-seek__thumb" style={{ left: `${playedPct}%` }} />
         {hover && (
-          <div className="pv-seek__tooltip" style={{ left: hover.x }}>
-            {!hasDvrWindow && chapterAt(chapters, hover.time)?.title && (
-              <span className="pv-seek__tooltip-chapter">{chapterAt(chapters, hover.time).title}</span>
+          <>
+            {thumbnailFrame && (
+              <div
+                className="pv-seek__preview"
+                style={{
+                  left: hover.x,
+                  width: thumbnailFrame.tileWidth,
+                  height: thumbnailFrame.tileHeight,
+                }}
+              >
+                <div
+                  className="pv-seek__preview-image"
+                  style={{
+                    backgroundImage: `url(${thumbnailFrame.url})`,
+                    backgroundPosition: `-${thumbnailFrame.col * thumbnailFrame.tileWidth}px -${thumbnailFrame.row * thumbnailFrame.tileHeight}px`,
+                    width: thumbnailFrame.tileWidth,
+                    height: thumbnailFrame.tileHeight,
+                  }}
+                />
+              </div>
             )}
-            {hasDvrWindow ? `-${formatTime(effectiveDuration - hover.time)}` : formatTime(hover.time)}
-          </div>
+            <div
+              className="pv-seek__tooltip"
+              style={{ left: hover.x, bottom: thumbnailFrame ? 28 + thumbnailFrame.tileHeight + 8 : undefined }}
+            >
+              {!hasDvrWindow && chapterAt(chapters, hover.time)?.title && (
+                <span className="pv-seek__tooltip-chapter">{chapterAt(chapters, hover.time).title}</span>
+              )}
+              {hasDvrWindow ? `-${formatTime(effectiveDuration - hover.time)}` : formatTime(hover.time)}
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -165,10 +212,12 @@ function SettingsPanel({
   audio,
   subtitles,
   speed,
+  sleepTimer,
   showQuality,
   showAudio,
   showSubtitles,
   showSpeed,
+  showSleepTimer,
 }) {
   if (activeView === 'quality') {
     return (
@@ -223,6 +272,18 @@ function SettingsPanel({
       />
     )
   }
+  if (activeView === 'sleepTimer') {
+    return (
+      <SleepTimerMenu
+        current={sleepTimer.current}
+        onSelect={(minutes) => {
+          sleepTimer.onSelect(minutes)
+          setActiveView(SETTINGS_ROOT)
+        }}
+        onBack={() => setActiveView(SETTINGS_ROOT)}
+      />
+    )
+  }
 
   const qualityValue = quality.currentLevel === -1
     ? `Auto${quality.autoResolvedHeight ? ` (${quality.autoResolvedHeight}p)` : ''}`
@@ -231,6 +292,7 @@ function SettingsPanel({
   const subtitleValue = subtitles.currentTrack === -1
     ? 'Off'
     : subtitles.tracks.find((t) => t.id === subtitles.currentTrack)?.label || 'Off'
+  const sleepTimerValue = SLEEP_TIMER_OPTIONS.find((o) => o.minutes === sleepTimer?.current)?.label || 'Off'
 
   return (
     <div className="pv-submenu" role="menu" aria-label="Settings">
@@ -267,6 +329,15 @@ function SettingsPanel({
             <span>Subtitles</span>
             <span className="pv-submenu__row-value">
               {subtitleValue}
+              <ChevronRight size={16} aria-hidden="true" />
+            </span>
+          </button>
+        )}
+        {showSleepTimer && (
+          <button type="button" className="pv-submenu__row" onClick={() => setActiveView('sleepTimer')}>
+            <span>Sleep timer</span>
+            <span className="pv-submenu__row-value">
+              {sleepTimerValue}
               <ChevronRight size={16} aria-hidden="true" />
             </span>
           </button>
@@ -317,7 +388,7 @@ function PlayerControls({
 
   const VolumeIcon = state.muted || state.volume === 0 ? VolumeX : state.volume < 0.5 ? Volume1 : Volume2
 
-  const anySubmenuEnabled = flags.qualitySelector || flags.audioSelector || flags.subtitleSelector || flags.playbackSpeed
+  const anySubmenuEnabled = flags.qualitySelector || flags.audioSelector || flags.subtitleSelector || flags.playbackSpeed || flags.sleepTimer
 
   const showCaptionsToggle = flags.subtitleSelector && state.subtitleTracks.length > 0
   const currentChapter = chapterAt(state.chapters, state.currentTime)
@@ -337,6 +408,8 @@ function PlayerControls({
         seekableStart={state.seekableStart}
         seekableEnd={state.seekableEnd}
         chapters={state.chapters}
+        abLoop={state.abLoop}
+        thumbnails={state.thumbnails}
         onSeek={actions.seekTo}
         onScrubStart={actions.onScrubStart}
         onScrubEnd={actions.onScrubEnd}
@@ -475,6 +548,7 @@ function PlayerControls({
                     showAudio={flags.audioSelector}
                     showSubtitles={flags.subtitleSelector}
                     showSpeed={flags.playbackSpeed}
+                    showSleepTimer={flags.sleepTimer}
                     quality={{
                       levels: state.levels,
                       currentLevel: state.selectedQuality,
@@ -495,6 +569,10 @@ function PlayerControls({
                       options: state.speedOptions,
                       current: state.playbackRate,
                       onSelect: actions.setPlaybackRate,
+                    }}
+                    sleepTimer={{
+                      current: state.sleepTimerMinutes,
+                      onSelect: actions.setSleepTimer,
                     }}
                   />
                 </div>

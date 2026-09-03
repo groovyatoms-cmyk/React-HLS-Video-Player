@@ -677,6 +677,38 @@
   font-variant-numeric: tabular-nums;
   pointer-events: none;
   white-space: nowrap;
+  z-index: 2;
+}
+
+/* ---------- thumbnail scrub preview ---------- */
+.pv-seek__preview {
+  position: absolute;
+  bottom: 28px;
+  transform: translateX(-50%);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  background: #000;
+}
+
+.pv-seek__preview-image {
+  background-repeat: no-repeat;
+  display: block;
+}
+
+/* ---------- A-B loop region ---------- */
+.pv-seek__loop-region {
+  position: absolute;
+  top: 50%;
+  height: 4px;
+  transform: translateY(-50%);
+  background: var(--player-accent-2, #d4af37);
+  opacity: 0.55;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* ---------- settings / submenus ---------- */

@@ -35,4 +35,36 @@ export const DEMO_STREAMS = [
   },
 ]
 
+// Generated placeholder thumbnail sprite for the seek-bar scrub-preview
+// demo — a 5x2 grid of labeled tiles, entirely inline (no network request),
+// standing in for a real per-video storyboard sprite in production use.
+function buildDemoThumbnailSprite() {
+  const columns = 5
+  const rows = 2
+  const tileWidth = 120
+  const tileHeight = 68
+  const colors = ['#7c3aed', '#8b5cf6', '#a78bfa', '#6d28d9', '#5b21b6', '#4c1d95', '#9333ea', '#7e22ce', '#6b21a8', '#581c87']
+  let cells = ''
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < columns; col += 1) {
+      const index = row * columns + col
+      const x = col * tileWidth
+      const y = row * tileHeight
+      cells += `<rect x="${x}" y="${y}" width="${tileWidth}" height="${tileHeight}" fill="${colors[index % colors.length]}"/>`
+      cells += `<text x="${x + tileWidth / 2}" y="${y + tileHeight / 2 + 5}" font-family="sans-serif" font-size="16" fill="#fff" text-anchor="middle">${index}</text>`
+    }
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${columns * tileWidth}" height="${rows * tileHeight}">${cells}</svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
+export const DEMO_THUMBNAILS = {
+  url: buildDemoThumbnailSprite(),
+  interval: 10, // seconds per tile
+  columns: 5,
+  rows: 2,
+  tileWidth: 120,
+  tileHeight: 68,
+}
+
 export default DEMO_STREAM

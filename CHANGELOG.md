@@ -5,6 +5,26 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-09-03
+
+### Added
+
+- **Thumbnail scrub preview**: a `thumbnails` sprite-sheet prop
+  (`{ url, interval, columns, rows, tileWidth, tileHeight, count? }`) shows
+  the matching storyboard tile above the seek bar's time tooltip on hover.
+- **A-B loop (segment repeat)**: "Set loop point A" / "Set loop point B" /
+  "Clear loop" in the right-click context menu, with the active segment
+  highlighted on the seek bar. Toggle via the `abLoop` prop.
+- **Screenshot / frame capture**: "Save screenshot" in the context menu
+  captures the current frame to a downloaded PNG via canvas, failing
+  gracefully (toast, not a crash) on cross-origin sources without CORS
+  clearance. Toggle via the `screenshot` prop.
+- **Sleep timer**: a new "Sleep timer" settings-menu row (Off / 10 / 30 /
+  60 minutes / End of video) pauses playback on expiry with a toast.
+  Toggle via the `sleepTimer` prop.
+- Generalized the "resumed from" toast into a reusable toast surface shared
+  by the new sleep-timer notifications.
+
 ## [1.1.0] - 2026-09-03
 
 ### Added
@@ -112,5 +132,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stream picker, theme/accent/debug/ads toggles, a live player-event log,
   and current stream/quality/audio/subtitle/time/buffer readouts.
 
+[1.2.0]: https://github.com/groovyatoms-cmyk/reactjvideoplayer/releases/tag/v1.2.0
 [1.1.0]: https://github.com/groovyatoms-cmyk/reactjvideoplayer/releases/tag/v1.1.0
 [1.0.0]: https://github.com/groovyatoms-cmyk/reactjvideoplayer/releases/tag/v1.0.0

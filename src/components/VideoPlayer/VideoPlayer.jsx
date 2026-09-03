@@ -9,7 +9,7 @@ import {
 } from 'react'
 import ReactPlayerImport from 'react-player'
 import Hls from 'hls.js'
-import { Play, Pause, Loader2, AlertTriangle, Copy, Info, X, ChevronRight } from 'lucide-react'
+import { Play, Pause, Loader2, AlertTriangle, Copy, Info, X, ChevronRight, Camera, Repeat } from 'lucide-react'
 import useHlsPlayer from '../../hooks/useHlsPlayer'
 import useImaAds from '../../hooks/useImaAds'
 import PlayerControls from './PlayerControls'
@@ -71,6 +71,10 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     theatreMode: theatreEnabled = true,
     keyboardShortcuts = true,
     share: shareEnabled = true,
+    sleepTimer: sleepTimerEnabled = true,
+    abLoop: abLoopEnabled = true,
+    screenshot: screenshotEnabled = true,
+    thumbnails,
     debug = false,
     doubleClickToSeek = true,
     doubleClickSeekSeconds = 10,
@@ -178,10 +182,24 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   const [contextMenu, setContextMenu] = useState(null)
   const [statsVisible, setStatsVisible] = useState(false)
   const [skipInfo, setSkipInfo] = useState(null)
-  const [resumeToast, setResumeToast] = useState(null)
+  const [toast, setToast] = useState(null)
+  const toastTimerRef = useRef(null)
+  const showToast = useCallback((message, duration = 4000) => {
+    clearTimeout(toastTimerRef.current)
+    setToast(message)
+    toastTimerRef.current = setTimeout(() => setToast(null), duration)
+  }, [])
   const [upNextCountdown, setUpNextCountdown] = useState(null)
   const upNextCancelledRef = useRef(false)
   const upNextFiredRef = useRef(false)
+  const [sleepTimerMinutes, setSleepTimerMinutes] = useState(0) // 0 = off, number, or 'end'
+  const sleepTimerTimeoutRef = useRef(null)
+  const sleepAtEndRef = useRef(false)
+  const [abLoop, setAbLoop] = useState(null) // { start, end } | { start } | null
+  const abLoopRef = useRef(null)
+  useEffect(() => {
+    abLoopRef.current = abLoop
+  }, [abLoop])
   const lastSavedPositionRef = useRef(0)
   const resumedRef = useRef(false)
   const [resolvedTheme, setResolvedTheme] = useState(theme === 'light' ? 'light' : 'dark')
@@ -304,6 +322,10 @@ const VideoPlayer = forwardRef(function VideoPlayer(
             loadedSeconds: bufferedRef.current,
             loaded: el.duration ? bufferedRef.current / el.duration : 0,
           })
+          const loop = abLoopRef.current
+          if (loop?.end != null && el.currentTime >= loop.end) {
+            el.currentTime = loop.start
+          }
         },
         progress: () => {
           try {
@@ -336,6 +358,10 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         },
         ended: () => {
           setPlaying(false)
+          if (sleepAtEndRef.current) {
+            sleepAtEndRef.current = false
+            setSleepTimerMinutes(0)
+          }
           callbacksRef.current.onEnded?.()
         },
         seeked: () => callbacksRef.current.onSeek?.(el.currentTime),
@@ -413,7 +439,8 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     upNextCancelledRef.current = false
     upNextFiredRef.current = false
     setUpNextCountdown(null)
-    setResumeToast(null)
+    setToast(null)
+    setAbLoop(null)
   }, [src])
 
   // ---- load timeout safeguard: never get stuck on "Loading…" forever ----
@@ -437,11 +464,8 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     const saved = readStorage(positionStorageKey, 0)
     if (saved > 5 && saved < duration - 10) {
       mediaControls.seekTo(saved)
-      setResumeToast(`Resumed from ${formatTime(saved)}`)
-      const timer = setTimeout(() => setResumeToast(null), 4000)
-      return () => clearTimeout(timer)
+      showToast(`Resumed from ${formatTime(saved)}`)
     }
-    return undefined
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rememberPosition, mediaReady, duration, positionStorageKey])
 
@@ -645,6 +669,71 @@ const VideoPlayer = forwardRef(function VideoPlayer(
       return next
     })
   }, [])
+
+  // ---- sleep timer ----------------------------------------------------------
+  const setSleepTimer = useCallback(
+    (minutes) => {
+      clearTimeout(sleepTimerTimeoutRef.current)
+      sleepAtEndRef.current = false
+      setSleepTimerMinutes(minutes)
+      if (!minutes) return
+      if (minutes === 'end') {
+        sleepAtEndRef.current = true
+        showToast('Sleep timer set: playback will pause at the end of this video')
+        return
+      }
+      showToast(`Sleep timer set for ${minutes} minute${minutes === 1 ? '' : 's'}`)
+      sleepTimerTimeoutRef.current = setTimeout(() => {
+        mediaElRef.current?.pause()
+        setSleepTimerMinutes(0)
+        showToast('Sleep timer: playback paused')
+      }, minutes * 60 * 1000)
+    },
+    [showToast],
+  )
+
+  useEffect(() => () => clearTimeout(sleepTimerTimeoutRef.current), [])
+
+  // ---- A-B loop (segment repeat) ---------------------------------------------
+  const setLoopPointA = useCallback(() => {
+    setAbLoop({ start: mediaElRef.current?.currentTime ?? 0 })
+  }, [])
+  const setLoopPointB = useCallback(() => {
+    setAbLoop((prev) => {
+      const end = mediaElRef.current?.currentTime ?? 0
+      if (!prev || end <= prev.start) return prev
+      return { start: prev.start, end }
+    })
+  }, [])
+  const clearAbLoop = useCallback(() => setAbLoop(null), [])
+
+  // ---- screenshot / frame capture ---------------------------------------------
+  const captureScreenshot = useCallback(() => {
+    const el = mediaElRef.current
+    if (!el || !el.videoWidth) return
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = el.videoWidth
+      canvas.height = el.videoHeight
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(el, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob((blob) => {
+        if (!blob) return
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `screenshot-${Math.floor(el.currentTime)}s.png`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 1000)
+      }, 'image/png')
+    } catch {
+      // Cross-origin video without CORS clearance taints the canvas —
+      // capture just silently isn't available for this source.
+      showToast('Screenshot unavailable for this video source')
+    }
+  }, [showToast])
 
   // ---- live edge -----------------------------------------------------------------
   const goLive = useCallback(() => {
@@ -1055,8 +1144,8 @@ const VideoPlayer = forwardRef(function VideoPlayer(
               </button>
             )}
 
-            {resumeToast && (
-              <div className="pv-toast">{resumeToast}</div>
+            {toast && (
+              <div className="pv-toast">{toast}</div>
             )}
 
             {upNextCountdown !== null && !ads.adState.playing && (
@@ -1111,6 +1200,9 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                   chapters,
                   seekableStart: seekableRange.start,
                   seekableEnd: seekableRange.end,
+                  sleepTimerMinutes,
+                  abLoop,
+                  thumbnails,
                 }}
                 flags={{
                   qualitySelector: qualitySelector && useHlsJsBackend,
@@ -1121,6 +1213,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                   pictureInPicture: pipEnabled,
                   theatreMode: theatreEnabled,
                   share: shareEnabled,
+                  sleepTimer: sleepTimerEnabled,
                 }}
                 actions={{
                   togglePlay,
@@ -1138,6 +1231,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                   setQuality,
                   setAudioTrack,
                   setSubtitleTrack,
+                  setSleepTimer,
                   toggleCaptions,
                   toggleFullscreen,
                   togglePiP,
@@ -1177,6 +1271,26 @@ const VideoPlayer = forwardRef(function VideoPlayer(
           <button type="button" onClick={() => setStatsVisible(true)}>
             <Info size={14} aria-hidden="true" /> Stats for nerds
           </button>
+          {screenshotEnabled && (
+            <button type="button" onClick={captureScreenshot}>
+              <Camera size={14} aria-hidden="true" /> Save screenshot
+            </button>
+          )}
+          {abLoopEnabled && !abLoop && (
+            <button type="button" onClick={setLoopPointA}>
+              <Repeat size={14} aria-hidden="true" /> Set loop point A
+            </button>
+          )}
+          {abLoopEnabled && abLoop && !abLoop.end && (
+            <button type="button" onClick={setLoopPointB}>
+              <Repeat size={14} aria-hidden="true" /> Set loop point B
+            </button>
+          )}
+          {abLoopEnabled && abLoop && (
+            <button type="button" onClick={clearAbLoop}>
+              <Repeat size={14} aria-hidden="true" /> Clear loop{abLoop.end ? ` (${formatTime(abLoop.start)}–${formatTime(abLoop.end)})` : ''}
+            </button>
+          )}
         </div>
       )}
     </div>

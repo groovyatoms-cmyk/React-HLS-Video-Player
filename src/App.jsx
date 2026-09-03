@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import VideoPlayer from './components/VideoPlayer/VideoPlayer'
-import { DEMO_STREAM, DEMO_STREAMS } from './data/demoStreams'
+import { DEMO_STREAM, DEMO_STREAMS, DEMO_THUMBNAILS } from './data/demoStreams'
 import { DEMO_AD_TAG_URL } from './data/adsConfig'
 import { formatBitrate, formatTime } from './components/VideoPlayer/playerUtils'
 import './App.css'
@@ -54,6 +54,7 @@ export default function App() {
           accentColor={accentColor}
           debug={debug}
           adTagUrl={adsEnabled ? DEMO_AD_TAG_URL : undefined}
+          thumbnails={DEMO_THUMBNAILS}
           onReady={() => logEvent('ready')}
           onPlay={() => logEvent('play')}
           onPause={() => logEvent('pause')}

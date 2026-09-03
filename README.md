@@ -25,6 +25,8 @@ release history.
 - Full imperative ref API and callback API.
 - Google IMA SDK pre-roll ad support, intro/credits skip markers, chapter
   markers, "continue watching" resume, and a Netflix-style "Up Next" card.
+- Thumbnail scrub preview, A-B loop (segment repeat), one-click screenshot
+  capture, and a sleep timer.
 - "Stats for nerds" diagnostics panel and a right-click context menu.
 
 ## Project structure
@@ -140,6 +142,10 @@ Or with a custom stream: `<VideoPlayer src="https://example.com/stream/master.m3
 | `capLevelOnFPSDrop` | `boolean` | `false` | hls.js's `capLevelOnFPSDrop` — steps ABR down if the browser can't keep up on FPS. |
 | `lowLatencyMode` | `boolean` | hls.js default (`true`) | Enables/disables hls.js Low-Latency HLS (LL-HLS) mode. |
 | `drmConfig` | `{ keySystem: 'widevine' \| 'playready' \| 'fairplay', licenseUrl, certificateUrl? }` | — | Maps to hls.js's EME `drmSystems` config for encrypted (DRM-protected) streams. |
+| `thumbnails` | `{ url, interval, columns, rows, tileWidth, tileHeight, count? }` | — | Sprite-sheet scrub preview on the seek bar (see below). |
+| `abLoop` | `boolean` | `true` | Enable the A-B loop ("set loop point A/B") context-menu entries. |
+| `screenshot` | `boolean` | `true` | Enable the "Save screenshot" context-menu entry. |
+| `sleepTimer` | `boolean` | `true` | Show the "Sleep timer" row in the settings menu. |
 | `className` / `style` | — | — | Passed through to the player wrapper. |
 
 ## Callbacks
@@ -296,6 +302,44 @@ What's wired into actual player behavior:
   segment loading without tearing down the `Hls` instance; `swapAudioCodec()`
   is exposed for the same reason hls.js exposes it (recovering from an
   audio codec mismatch mid-stream).
+
+## Advanced playback features
+
+- **Thumbnail scrub preview** — pass `thumbnails` as a sprite-sheet
+  descriptor and hovering the seek bar shows the matching tile above the
+  time tooltip:
+
+  ```jsx
+  <VideoPlayer
+    src={src}
+    thumbnails={{
+      url: '/storyboard.jpg',  // single sprite image
+      interval: 10,             // seconds represented by each tile
+      columns: 10,
+      rows: 10,
+      tileWidth: 160,
+      tileHeight: 90,
+      // count: 97,             // optional — defaults to columns * rows
+    }}
+  />
+  ```
+
+  The player never generates thumbnails itself — supply a sprite from your
+  encoding pipeline (this is the same storyboard format YouTube/Netflix use).
+
+- **A-B loop (segment repeat)** — right-click the player → "Set loop point
+  A", then again at the point you want to loop back from → "Set loop point
+  B". The segment between them is highlighted on the seek bar and repeats
+  until "Clear loop" is chosen. Disable via `abLoop={false}`.
+- **Screenshot / frame capture** — right-click → "Save screenshot" grabs
+  the current frame to a PNG download. This uses `<canvas>.drawImage()` on
+  the video element, so it's subject to the same-origin/CORS rules any
+  canvas-based capture is: a cross-origin source without permissive CORS
+  headers will fail silently with a toast rather than crash. Disable via
+  `screenshot={false}`.
+- **Sleep timer** — a "Sleep timer" row in the settings menu (Off / 10 /
+  30 / 60 minutes / End of video) pauses playback when it elapses, with a
+  toast confirmation. Disable via `sleepTimer={false}`.
 
 ## Browser compatibility
 
