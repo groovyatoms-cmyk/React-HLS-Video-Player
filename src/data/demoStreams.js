@@ -33,6 +33,34 @@ export const DEMO_STREAMS = [
     url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
     poster: '',
   },
+  {
+    id: 'apple-bipbop-4x3',
+    label: 'Apple BipBop 4x3 (multi-bitrate + captions)',
+    type: 'hls',
+    url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8',
+    poster: '',
+  },
+  {
+    id: 'apple-bipbop-adv-fmp4',
+    label: 'Apple BipBop Advanced (fMP4, multi-audio + subtitles)',
+    type: 'hls',
+    url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+    poster: '',
+  },
+  {
+    id: 'unified-tears-of-steel',
+    label: 'Tears of Steel (Unified Streaming, fMP4)',
+    type: 'hls',
+    url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+    poster: '',
+  },
+  {
+    id: 'bitmovin-art-of-motion',
+    label: 'Art of Motion (Bitmovin, multi-bitrate)',
+    type: 'hls',
+    url: 'https://bitmovin-a.akamaihd.net/content/MI201109210084_1/m3u8s/f08e80da-bf1d-4e3d-8899-f0f6155f6efa.m3u8',
+    poster: '',
+  },
 ]
 
 // Generated placeholder thumbnail sprite for the seek-bar scrub-preview
