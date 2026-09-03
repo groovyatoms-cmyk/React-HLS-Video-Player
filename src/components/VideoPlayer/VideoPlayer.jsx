@@ -83,6 +83,13 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     rememberPosition = true,
     autoplayNextDelay = 8,
     onNextEpisode,
+    hlsConfig,
+    startLevel = -1,
+    startPosition,
+    maxQuality,
+    capLevelOnFPSDrop = false,
+    lowLatencyMode,
+    drmConfig,
     className = '',
     style,
     onPlay,
@@ -94,6 +101,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     onBuffer,
     onBufferEnd,
     onError,
+    onWarning,
     onQualityChange,
     onAudioChange,
     onSubtitleChange,
@@ -102,6 +110,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     onPiPChange,
     onVolumeChange,
     onSeek,
+    onFragChanged,
   },
   ref,
 ) {
@@ -136,6 +145,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     onSeek,
     onFullscreenChange,
     onPiPChange,
+    onWarning,
   }
 
   const sourceType = useMemo(() => detectSourceType(src), [src])
@@ -147,6 +157,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [buffered, setBuffered] = useState(0)
+  const [seekableRange, setSeekableRange] = useState({ start: 0, end: 0 })
   const [volume, setVolumeState] = useState(() => readStorage(STORAGE_KEYS.volume, 1))
   const [muted, setMuted] = useState(() => readStorage(STORAGE_KEYS.muted, initialMuted))
   const [playbackRate, setPlaybackRateState] = useState(() => readStorage(STORAGE_KEYS.playbackRate, 1))
@@ -175,17 +186,22 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   const resumedRef = useRef(false)
   const [resolvedTheme, setResolvedTheme] = useState(theme === 'light' ? 'light' : 'dark')
 
-  const handleHlsError = useCallback(
-    (data) => {
-      callbacksRef.current.onError?.({
-        type: data.type,
-        details: data.details,
-        fatal: data.fatal,
-        message: data.error?.message || data.details,
-      })
-    },
-    [],
-  )
+  const handleHlsError = useCallback((data) => {
+    callbacksRef.current.onError?.({
+      type: data.type,
+      details: data.details,
+      fatal: data.fatal,
+      message: data.error?.message || data.details,
+    })
+  }, [])
+
+  const handleHlsWarning = useCallback((data) => {
+    callbacksRef.current.onWarning?.({
+      type: data.type,
+      details: data.details,
+      message: data.error?.message || data.details,
+    })
+  }, [])
 
   const handleLevelSwitched = useCallback(
     (info) => onQualityChange?.(info),
@@ -193,15 +209,25 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   )
   const handleAudioSwitched = useCallback((info) => onAudioChange?.(info), [onAudioChange])
   const handleSubtitleSwitched = useCallback((info) => onSubtitleChange?.(info), [onSubtitleChange])
+  const handleFragChanged = useCallback((info) => onFragChanged?.(info), [onFragChanged])
 
   const hls = useHlsPlayer({
     videoRef: nativeVideoRef,
     src,
     enabled: useHlsJsBackend,
+    hlsConfig,
+    startLevel,
+    startPosition,
+    maxQuality,
+    capLevelOnFPSDrop,
+    lowLatencyMode,
+    drmConfig,
     onError: handleHlsError,
+    onWarning: handleHlsWarning,
     onLevelSwitched: handleLevelSwitched,
     onAudioTrackSwitched: handleAudioSwitched,
     onSubtitleTrackSwitched: handleSubtitleSwitched,
+    onFragChanged: handleFragChanged,
   })
 
   const ads = useImaAds({
@@ -290,6 +316,14 @@ const VideoPlayer = forwardRef(function VideoPlayer(
           } catch {
             /* ignore */
           }
+          try {
+            const s = el.seekable
+            if (s.length > 0) {
+              setSeekableRange({ start: s.start(0), end: s.end(s.length - 1) })
+            }
+          } catch {
+            /* ignore */
+          }
         },
         volumechange: () => {
           setVolumeState(el.volume)
@@ -373,6 +407,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     setCurrentTime(0)
     setDuration(0)
     setBuffered(0)
+    setSeekableRange({ start: 0, end: 0 })
     adsRequestedRef.current = false
     resumedRef.current = false
     upNextCancelledRef.current = false
@@ -611,6 +646,16 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     })
   }, [])
 
+  // ---- live edge -----------------------------------------------------------------
+  const goLive = useCallback(() => {
+    if (useHlsJsBackend) {
+      hls.goLive()
+      return
+    }
+    const el = mediaElRef.current
+    if (el && seekableRange.end > 0) el.currentTime = seekableRange.end
+  }, [useHlsJsBackend, hls, seekableRange.end])
+
   // ---- captions toggle ---------------------------------------------------------
   const toggleCaptions = useCallback(() => {
     if (hls.currentSubtitleTrack === -1) {
@@ -838,8 +883,17 @@ const VideoPlayer = forwardRef(function VideoPlayer(
       getSubtitleTracks: () => hls.subtitleTracks,
       getVideoElement: () => mediaElRef.current,
       skipAd: () => ads.skipAd(),
+      goLive,
+      // hls.js-specific escape hatches — no-ops when the ReactPlayer/native
+      // backend is active (progressive source, or Safari's native HLS).
+      getHlsInstance: () => hls.getHlsInstance(),
+      stopLoad: () => hls.stopLoad(),
+      startLoad: () => hls.resumeLoad(),
+      swapAudioCodec: () => hls.swapAudioCodec(),
+      getBandwidthEstimate: () => hls.getBandwidthEstimate(),
+      getStats: () => hls.getStats(),
     }),
-    [mediaControls, enterFullscreen, exitFullscreen, toggleTheatre, hls, ads],
+    [mediaControls, enterFullscreen, exitFullscreen, toggleTheatre, hls, ads, goLive],
   )
 
   // ---- render helpers -----------------------------------------------------------
@@ -1055,6 +1109,8 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                   subtitleTracks: hls.subtitleTracks,
                   subtitleTrack: hls.currentSubtitleTrack,
                   chapters,
+                  seekableStart: seekableRange.start,
+                  seekableEnd: seekableRange.end,
                 }}
                 flags={{
                   qualitySelector: qualitySelector && useHlsJsBackend,
@@ -1086,7 +1142,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                   toggleFullscreen,
                   togglePiP,
                   toggleTheatre,
-                  goLive: hls.goLive,
+                  goLive,
                   onShare: handleShare,
                 }}
               />
@@ -1152,10 +1208,20 @@ function StatsPanel({ getStats, currentTime, buffering, onClose, pinned }) {
         <dd>{formatBitrate(stats?.bitrate) || '—'}</dd>
         <dt>FPS</dt>
         <dd>{stats?.fps ? Math.round(stats.fps) : '—'}</dd>
+        <dt>Video codec</dt>
+        <dd>{stats?.videoCodec || '—'}</dd>
+        <dt>Audio codec</dt>
+        <dd>{stats?.audioCodec || '—'}</dd>
+        <dt>Est. bandwidth</dt>
+        <dd>{formatBitrate(stats?.bandwidthEstimate) || '—'}</dd>
+        <dt>Fragment</dt>
+        <dd>{stats?.fragmentSn != null ? `#${stats.fragmentSn}` : '—'}</dd>
         <dt>Buffer</dt>
         <dd>{stats ? `${stats.bufferLength.toFixed(1)}s` : '—'}</dd>
         <dt>Dropped frames</dt>
         <dd>{stats ? `${stats.droppedFrames} / ${stats.totalFrames}` : '—'}</dd>
+        <dt>Latency</dt>
+        <dd>{stats?.latency != null ? `${stats.latency.toFixed(1)}s` : '—'}</dd>
         <dt>Current time</dt>
         <dd>{formatTime(currentTime)}</dd>
         <dt>State</dt>

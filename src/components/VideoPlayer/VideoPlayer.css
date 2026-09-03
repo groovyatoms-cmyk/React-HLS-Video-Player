@@ -530,14 +530,26 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
   background: transparent;
-  color: #ff4d4d;
+  color: rgba(255, 255, 255, 0.75);
   font-weight: 700;
   font-size: 12px;
   letter-spacing: 0.03em;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 3px 7px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.pv-live--edge {
+  border-color: transparent;
+  color: #ff4d4d;
+}
+
+.pv-live:not(.pv-live--edge):hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
 /* ---------- volume ---------- */

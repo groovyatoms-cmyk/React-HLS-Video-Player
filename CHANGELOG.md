@@ -5,6 +5,46 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-09-03
+
+### Added
+
+- Expanded hls.js coverage: `maxQuality` (ABR resolution capping via
+  `hls.autoLevelCapping`), `capLevelOnFPSDrop`, `lowLatencyMode` (LL-HLS),
+  `startPosition`, `drmConfig` (EME/DRM via hls.js's `drmSystems`), codec
+  info (`videoCodec`/`audioCodec`) on levels and in the stats panel, and a
+  live hls.js bandwidth estimate.
+- Proper **Live DVR seeking**: the seek bar now uses the media element's
+  actual `seekable` range for live streams instead of `duration` (`Infinity`
+  for live, which silently broke the bar's percentage math and made it
+  non-functional) — enabling real backward scrubbing into the DVR window,
+  not just a jump-to-edge button. The "LIVE" badge now distinguishes "at the
+  live edge" (solid red) from "behind the edge" (outlined, click to catch
+  up), and `goLive()` works on both the hls.js and native-HLS/Safari paths.
+- `onWarning` callback for non-fatal hls.js errors, kept distinct from the
+  fatal ones routed through `onError`.
+- `onFragChanged` callback, firing on every hls.js fragment switch.
+- Ref API additions: `goLive()`, `getStats()`, `getBandwidthEstimate()`,
+  `stopLoad()`/`startLoad()`, `swapAudioCodec()`, and `getHlsInstance()` — a
+  raw `Hls` instance escape hatch for anything not individually wrapped.
+- `hlsConfig` documented as the general escape hatch for any hls.js
+  constructor option not exposed as a dedicated prop.
+
+### Fixed
+
+- Center play/pause/seek pulse animation restarting (visibly flickering)
+  because its React `key` was tied to continuously-changing `currentTime`.
+- Theatre mode collapsing the player to zero height due to a circular `%`
+  height reference in CSS (`min(80vh, 100%)` against a parent with no
+  explicit height of its own).
+- Seek bar's hover/drag thumb rendering as an oval instead of a circle — a
+  CSS selector meant to thicken the track on hover was accidentally
+  squashing the thumb's height too.
+- `react-player`'s CJS build getting double-wrapped by Vite's dev-time
+  dependency pre-bundler (`{ default: ReactPlayer }` instead of the
+  component itself), crashing to a blank page the moment a progressive
+  source or Safari's native-HLS path rendered.
+
 ## [1.0.0] - 2026-09-03
 
 ### Added
@@ -72,4 +112,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stream picker, theme/accent/debug/ads toggles, a live player-event log,
   and current stream/quality/audio/subtitle/time/buffer readouts.
 
+[1.1.0]: https://github.com/groovyatoms-cmyk/reactjvideoplayer/releases/tag/v1.1.0
 [1.0.0]: https://github.com/groovyatoms-cmyk/reactjvideoplayer/releases/tag/v1.0.0

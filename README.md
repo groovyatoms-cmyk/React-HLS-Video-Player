@@ -133,15 +133,25 @@ Or with a custom stream: `<VideoPlayer src="https://example.com/stream/master.m3
 | `onNextEpisode` | `() => void` | — | Called when "Up Next" fires (countdown reaches 0 or "Play now" is clicked). |
 | `rememberPosition` | `boolean` | `true` | Persist and silently resume the last playback position per `src`. |
 | `adTagUrl` | `string` | — | VAST ad tag URL; enables a Google IMA SDK pre-roll ad. |
+| `hlsConfig` | `object` | — | Passed straight through to the `Hls` constructor, merged after the named hls.js props below — the escape hatch for any hls.js option not individually exposed. |
+| `startLevel` | `number` | `-1` (auto) | Initial hls.js quality level index. |
+| `startPosition` | `number` (seconds) | — | Native hls.js start position for the initial load (distinct from `rememberPosition`'s resume-on-return). |
+| `maxQuality` | `number` (max height, e.g. `720`) | — | Caps ABR to this vertical resolution or lower via `hls.autoLevelCapping`; manual selection above the cap is still allowed. |
+| `capLevelOnFPSDrop` | `boolean` | `false` | hls.js's `capLevelOnFPSDrop` — steps ABR down if the browser can't keep up on FPS. |
+| `lowLatencyMode` | `boolean` | hls.js default (`true`) | Enables/disables hls.js Low-Latency HLS (LL-HLS) mode. |
+| `drmConfig` | `{ keySystem: 'widevine' \| 'playready' \| 'fairplay', licenseUrl, certificateUrl? }` | — | Maps to hls.js's EME `drmSystems` config for encrypted (DRM-protected) streams. |
 | `className` / `style` | — | — | Passed through to the player wrapper. |
 
 ## Callbacks
 
 `onPlay`, `onPause`, `onEnded`, `onReady`, `onProgress({ playedSeconds, played, loadedSeconds, loaded })`,
-`onDuration(seconds)`, `onBuffer`, `onBufferEnd`, `onError({ type, message, ... })`,
-`onQualityChange({ index, auto, width, height, bitrate })`, `onAudioChange({ id })`,
+`onDuration(seconds)`, `onBuffer`, `onBufferEnd`, `onError({ type, message, fatal, ... })`,
+`onWarning({ type, details, message })` — non-fatal hls.js errors (e.g. a single retried
+fragment load), kept distinct from `onError`'s fatal ones,
+`onQualityChange({ index, auto, width, height, bitrate, videoCodec, audioCodec })`, `onAudioChange({ id })`,
 `onSubtitleChange({ id })`, `onPlaybackRateChange(rate)`, `onFullscreenChange(bool)`,
-`onPiPChange(bool)`, `onVolumeChange({ volume, muted })`, `onSeek(seconds)`.
+`onPiPChange(bool)`, `onVolumeChange({ volume, muted })`, `onSeek(seconds)`,
+`onFragChanged({ sn, level, start, duration, programDateTime })` — fires on every hls.js fragment change.
 
 ## Ref (imperative) API
 
@@ -161,6 +171,17 @@ playerRef.current.getAudioTracks()
 playerRef.current.getSubtitleTracks()
 playerRef.current.getVideoElement()
 playerRef.current.skipAd()
+playerRef.current.goLive()              // jumps to the live edge (hls.js or native HLS)
+playerRef.current.getStats()            // resolution/bitrate/codecs/bandwidth/buffer/dropped frames
+playerRef.current.getBandwidthEstimate() // hls.js's current ABR bandwidth estimate, bits/sec
+
+// hls.js-specific — no-ops on the ReactPlayer/native backend (progressive
+// sources, or Safari's native HLS, where there is no hls.js instance):
+playerRef.current.stopLoad()            // pause segment loading without destroying the instance
+playerRef.current.startLoad()           // resume it
+playerRef.current.swapAudioCodec()      // hls.js's swapAudioCodec()
+playerRef.current.getHlsInstance()      // raw Hls instance — anything not wrapped above,
+                                         // e.g. playerRef.current.getHlsInstance()?.trigger(...)
 ```
 
 ## Keyboard shortcuts
@@ -233,6 +254,48 @@ or if the stream simply never becomes ready within a load-timeout window,
 the player shows an "Unable to play this video" overlay with a manual
 Retry button — it never retries silently forever, and it never gets stuck
 on a loading spinner with no way out.
+
+## hls.js feature coverage
+
+hls.js has a very large API surface; rather than enumerate every internal as
+a distinct prop, the player wires up the pieces that meaningfully change
+player *behavior* and leaves two deliberate escape hatches for the rest:
+
+- **`hlsConfig`** — passed straight into the `Hls` constructor, so any
+  hls.js config option (buffer sizing, ABR tuning, CMCD, custom loaders,
+  `xhrSetup`, …) not individually exposed as a prop is still reachable.
+- **`playerRef.current.getHlsInstance()`** — returns the raw `Hls`
+  instance once created, for anything not wrapped at all (`hls.trigger(...)`,
+  reading `hls.media`, low-level event subscriptions, etc.).
+
+What's wired into actual player behavior:
+
+- **ABR / quality**: real levels from the manifest (never invented), manual
+  + Auto selection, `maxQuality` capping, `capLevelOnFPSDrop`,
+  `capLevelToPlayerSize` (always on), codec info surfaced per level and in
+  the stats panel, live bandwidth estimate.
+- **Live DVR**: for live streams, the seek bar uses the media element's
+  actual `seekable` range (hls.js keeps this in sync with the live sliding
+  window) instead of `duration` (which is `Infinity` for live and would
+  otherwise make the bar non-functional) — so you can scrub backward into
+  the DVR window, not just jump to the edge. The "LIVE" badge is solid red
+  at the live edge and turns into an outlined "jump back to live" button
+  once you've scrubbed behind it (`goLive()` on the ref, or the badge
+  itself, jumps back using `hls.liveSyncPosition` when available).
+- **Fragment-level detail**: `onFragChanged` fires on every fragment
+  switch; current fragment number, codecs, and bandwidth estimate appear in
+  the "Stats for nerds" panel.
+- **Error taxonomy**: fatal hls.js errors go through `onError` and the
+  bounded retry strategy above; non-fatal ones (a single retried segment,
+  for example) go through a separate `onWarning` instead of being lumped in
+  with real failures.
+- **DRM (EME)**: `drmConfig` maps onto hls.js's `drmSystems` config for
+  Widevine/PlayReady/FairPlay-protected streams.
+- **Low-latency HLS**: `lowLatencyMode` toggles hls.js's LL-HLS handling.
+- **Load control**: `stopLoad()`/`startLoad()` on the ref pause and resume
+  segment loading without tearing down the `Hls` instance; `swapAudioCodec()`
+  is exposed for the same reason hls.js exposes it (recovering from an
+  audio codec mismatch mid-stream).
 
 ## Browser compatibility
 

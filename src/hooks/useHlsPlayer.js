@@ -6,6 +6,24 @@ const MAX_NETWORK_RETRIES = 4
 const MAX_MEDIA_RETRIES = 2
 const RETRY_RESET_WINDOW_MS = 20000
 
+/** Maps the player's simple `drmConfig` prop shape onto hls.js's `drmSystems` config. */
+function buildDrmSystems(drmConfig) {
+  if (!drmConfig?.licenseUrl) return undefined
+  const keySystemMap = {
+    widevine: 'com.widevine.alpha',
+    playready: 'com.microsoft.playready',
+    fairplay: 'com.apple.fps',
+  }
+  const keySystem = keySystemMap[drmConfig.keySystem] || drmConfig.keySystem
+  if (!keySystem) return undefined
+  return {
+    [keySystem]: {
+      licenseUrl: drmConfig.licenseUrl,
+      serverCertificateUrl: drmConfig.certificateUrl,
+    },
+  }
+}
+
 /**
  * Owns the full hls.js lifecycle for a single <video> element: creates the
  * instance, loads the manifest, tracks available quality/audio/subtitle
@@ -19,6 +37,13 @@ const RETRY_RESET_WINDOW_MS = 20000
  * Only active when `enabled` is true — callers should set that to false for
  * progressive (mp4/webm) sources or for Safari's native HLS path, in which
  * case this hook is a cheap no-op returning empty track lists.
+ *
+ * Beyond the UI-facing options below, `hlsConfig` is passed straight through
+ * to the `Hls` constructor, so any hls.js config option not individually
+ * exposed here is still reachable, and `getHlsInstance()` returns the raw
+ * `Hls` instance for anything not wrapped at all (e.g. `hls.trigger(...)`,
+ * custom loaders) — those are the deliberate escape hatches rather than
+ * trying to enumerate hls.js's entire API as distinct props.
  */
 export default function useHlsPlayer({
   videoRef,
@@ -26,22 +51,33 @@ export default function useHlsPlayer({
   enabled,
   hlsConfig,
   startLevel = -1,
+  startPosition,
+  maxQuality,
+  capLevelOnFPSDrop = false,
+  lowLatencyMode,
+  drmConfig,
   onReady,
   onError,
+  onWarning,
   onLevelSwitched,
   onAudioTrackSwitched,
   onSubtitleTrackSwitched,
+  onFragChanged,
 }) {
   const hlsRef = useRef(null)
   const retryRef = useRef({ network: 0, media: 0, lastAt: 0 })
   const callbacksRef = useRef({})
-  callbacksRef.current = {
-    onReady,
-    onError,
-    onLevelSwitched,
-    onAudioTrackSwitched,
-    onSubtitleTrackSwitched,
-  }
+  useEffect(() => {
+    callbacksRef.current = {
+      onReady,
+      onError,
+      onWarning,
+      onLevelSwitched,
+      onAudioTrackSwitched,
+      onSubtitleTrackSwitched,
+      onFragChanged,
+    }
+  })
 
   const [levels, setLevels] = useState([])
   const [currentLevel, setCurrentLevel] = useState(-1)
@@ -52,6 +88,7 @@ export default function useHlsPlayer({
   const [isLive, setIsLive] = useState(false)
   const [fatalError, setFatalError] = useState(null)
   const [manifestReady, setManifestReady] = useState(false)
+  const [currentFragment, setCurrentFragment] = useState(null)
 
   const destroy = useCallback(() => {
     if (hlsRef.current) {
@@ -70,6 +107,7 @@ export default function useHlsPlayer({
     setSubtitleTracks([])
     setCurrentSubtitleTrack(-1)
     setIsLive(false)
+    setCurrentFragment(null)
 
     if (!enabled || !src || !videoRef.current) {
       destroy()
@@ -85,10 +123,15 @@ export default function useHlsPlayer({
     }
 
     const video = videoRef.current
+    const drmSystems = buildDrmSystems(drmConfig)
     const hls = new Hls({
       startLevel,
+      startPosition: Number.isFinite(startPosition) ? startPosition : -1,
       capLevelToPlayerSize: true,
+      capLevelOnFPSDrop,
+      ...(typeof lowLatencyMode === 'boolean' ? { lowLatencyMode } : null),
       enableWorker: true,
+      ...(drmSystems ? { emeEnabled: true, drmSystems } : null),
       ...hlsConfig,
     })
     hlsRef.current = hls
@@ -101,6 +144,8 @@ export default function useHlsPlayer({
         width: level.width,
         bitrate: level.bitrate,
         frameRate: level.frameRate,
+        videoCodec: level.videoCodec || null,
+        audioCodec: level.audioCodec || null,
         label: levelLabel(level),
       }))
       setLevels(nextLevels)
@@ -119,11 +164,27 @@ export default function useHlsPlayer({
         width: level?.width,
         height: level?.height,
         bitrate: level?.bitrate,
+        videoCodec: level?.videoCodec,
+        audioCodec: level?.audioCodec,
       })
     })
 
     hls.on(Hls.Events.LEVEL_LOADED, (_evt, data) => {
       setIsLive(Boolean(data.details?.live))
+    })
+
+    hls.on(Hls.Events.FRAG_CHANGED, (_evt, data) => {
+      const frag = data.frag
+      if (!frag) return
+      const info = {
+        sn: frag.sn,
+        level: frag.level,
+        start: frag.start,
+        duration: frag.duration,
+        programDateTime: frag.programDateTime ?? null,
+      }
+      setCurrentFragment(info)
+      callbacksRef.current.onFragChanged?.(info)
     })
 
     hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (_evt, data) => {
@@ -159,9 +220,11 @@ export default function useHlsPlayer({
     })
 
     hls.on(Hls.Events.ERROR, (_evt, data) => {
+      if (!data.fatal) {
+        callbacksRef.current.onWarning?.(data)
+        return
+      }
       callbacksRef.current.onError?.(data)
-
-      if (!data.fatal) return
 
       const now = Date.now()
       if (now - retryRef.current.lastAt > RETRY_RESET_WINDOW_MS) {
@@ -205,6 +268,24 @@ export default function useHlsPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, src, videoRef, destroy])
 
+  // Apply an optional max-quality cap (by vertical resolution) once levels
+  // are known — maps to hls.js's own ABR capping rather than reimplementing it.
+  useEffect(() => {
+    const hls = hlsRef.current
+    if (!hls || levels.length === 0) return
+    if (!Number.isFinite(maxQuality)) {
+      hls.autoLevelCapping = -1
+      return
+    }
+    let capIndex = -1
+    levels.forEach((level) => {
+      if (level.height && level.height <= maxQuality) {
+        if (capIndex === -1 || level.height > levels[capIndex].height) capIndex = level.index
+      }
+    })
+    hls.autoLevelCapping = capIndex
+  }, [levels, maxQuality])
+
   const setQuality = useCallback((index) => {
     const hls = hlsRef.current
     if (!hls) return
@@ -244,6 +325,25 @@ export default function useHlsPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src, videoRef])
 
+  /** Pauses segment loading without tearing down the instance. */
+  const stopLoad = useCallback(() => {
+    hlsRef.current?.stopLoad()
+  }, [])
+
+  /** Resumes segment loading after `stopLoad()`. */
+  const resumeLoad = useCallback(() => {
+    hlsRef.current?.startLoad()
+  }, [])
+
+  const swapAudioCodec = useCallback(() => {
+    hlsRef.current?.swapAudioCodec()
+  }, [])
+
+  const getBandwidthEstimate = useCallback(() => hlsRef.current?.bandwidthEstimate ?? null, [])
+
+  /** Raw hls.js instance escape hatch for anything not wrapped above. */
+  const getHlsInstance = useCallback(() => hlsRef.current, [])
+
   const getStats = useCallback(() => {
     const hls = hlsRef.current
     const video = videoRef.current
@@ -275,14 +375,19 @@ export default function useHlsPlayer({
       resolution: level ? `${level.width} x ${level.height}` : null,
       bitrate: level?.bitrate ?? null,
       fps: level?.frameRate ?? null,
+      videoCodec: level?.videoCodec ?? null,
+      audioCodec: level?.audioCodec ?? null,
       bufferLength,
       droppedFrames,
       totalFrames,
       liveSyncPosition: hls.liveSyncPosition ?? null,
       latency: hls.latency ?? null,
+      maxLatency: hls.maxLatency ?? null,
+      bandwidthEstimate: hls.bandwidthEstimate ?? null,
+      fragmentSn: currentFragment?.sn ?? null,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoRef])
+  }, [videoRef, currentFragment])
 
   return {
     hlsRef,
@@ -301,6 +406,12 @@ export default function useHlsPlayer({
     goLive,
     fatalError,
     retry,
+    stopLoad,
+    resumeLoad,
+    swapAudioCodec,
+    getBandwidthEstimate,
+    getHlsInstance,
+    currentFragment,
     getStats,
   }
 }
