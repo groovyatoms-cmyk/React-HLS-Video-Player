@@ -108,15 +108,54 @@ export function levelLabel(level) {
   return `${height}p${highFps ? highFps : ''}`
 }
 
+let languageDisplayNames = null
+try {
+  languageDisplayNames =
+    typeof Intl !== 'undefined' && Intl.DisplayNames ? new Intl.DisplayNames(['en'], { type: 'language' }) : null
+} catch {
+  languageDisplayNames = null
+}
+
+/**
+ * Resolves a BCP-47 language code (e.g. "en", "es-419", "hi") to its real
+ * display name (e.g. "English", "Spanish (Latin America)", "Hindi") via the
+ * standard `Intl.DisplayNames` API — never a hardcoded language list, and
+ * never invented for a code the runtime doesn't recognize.
+ */
+export function languageName(code) {
+  if (!code || code.toLowerCase() === 'und' || !languageDisplayNames) return null
+  try {
+    const name = languageDisplayNames.of(code)
+    if (name && name.toLowerCase() !== code.toLowerCase() && name.toLowerCase() !== 'root') return name
+  } catch {
+    // malformed/unrecognized subtag
+  }
+  return null
+}
+
 /** Best-effort human label for an HLS audio/subtitle track. */
 export function trackLabel(track, index) {
   if (!track) return `Track ${index + 1}`
+  const name = track.name && track.name.toLowerCase() !== (track.lang || '').toLowerCase() ? track.name : null
   return (
-    track.name ||
+    name ||
+    languageName(track.lang) ||
     track.lang ||
     track.language ||
     (track.default ? 'Default' : `Track ${index + 1}`)
   )
+}
+
+/** Maps an HLS #EXT-X-MEDIA CHANNELS attribute (a channel count) to a label. */
+export function formatChannels(channels) {
+  if (!channels) return null
+  const count = parseInt(channels, 10)
+  if (!Number.isFinite(count) || count <= 0) return null
+  if (count === 1) return 'Mono'
+  if (count === 2) return 'Stereo'
+  if (count <= 6) return '5.1 Surround'
+  if (count <= 8) return '7.1 Surround'
+  return `${count}-channel`
 }
 
 export function clamp(value, min, max) {

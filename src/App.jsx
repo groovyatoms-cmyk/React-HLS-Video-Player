@@ -77,12 +77,13 @@ export default function App() {
             logEvent(`quality → ${info.auto ? 'Auto' : `${info.height}p`}${formatBitrate(info.bitrate) ? ` (${formatBitrate(info.bitrate)})` : ''}`)
           }}
           onAudioChange={(info) => {
-            setCurrentAudio(`Track ${info.id + 1}`)
-            logEvent(`audio track → ${info.id}`)
+            const hint = [info.channels && `${info.channels}ch`, formatBitrate(info.bitrate)].filter(Boolean).join(', ')
+            setCurrentAudio(info.label ? `${info.label}${hint ? ` (${hint})` : ''}` : `Track ${info.id + 1}`)
+            logEvent(`audio track → ${info.label || info.id}`)
           }}
           onSubtitleChange={(info) => {
-            setCurrentSubtitle(info.id === -1 ? 'Off' : `Track ${info.id + 1}`)
-            logEvent(`subtitles → ${info.id === -1 ? 'off' : info.id}`)
+            setCurrentSubtitle(info.id === -1 ? 'Off' : info.label || `Track ${info.id + 1}`)
+            logEvent(`subtitles → ${info.id === -1 ? 'off' : info.label || info.id}`)
           }}
         />
 

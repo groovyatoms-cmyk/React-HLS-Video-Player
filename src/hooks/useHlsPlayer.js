@@ -66,6 +66,8 @@ export default function useHlsPlayer({
 }) {
   const hlsRef = useRef(null)
   const retryRef = useRef({ network: 0, media: 0, lastAt: 0 })
+  const audioTracksRef = useRef([])
+  const subtitleTracksRef = useRef([])
   const callbacksRef = useRef({})
   useEffect(() => {
     callbacksRef.current = {
@@ -104,8 +106,10 @@ export default function useHlsPlayer({
     setCurrentLevel(-1)
     setAudioTracks([])
     setCurrentAudioTrack(-1)
+    audioTracksRef.current = []
     setSubtitleTracks([])
     setCurrentSubtitleTrack(-1)
+    subtitleTracksRef.current = []
     setIsLive(false)
     setCurrentFragment(null)
 
@@ -192,15 +196,27 @@ export default function useHlsPlayer({
         id: index,
         label: trackLabel(track, index),
         lang: track.lang || '',
+        bitrate: track.bitrate || null,
+        channels: track.channels || null,
+        audioCodec: track.audioCodec || null,
         default: Boolean(track.default),
       }))
+      audioTracksRef.current = tracks
       setAudioTracks(tracks)
       setCurrentAudioTrack(hls.audioTrack)
     })
 
     hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (_evt, data) => {
       setCurrentAudioTrack(data.id)
-      callbacksRef.current.onAudioTrackSwitched?.({ id: data.id })
+      const track = audioTracksRef.current.find((t) => t.id === data.id)
+      callbacksRef.current.onAudioTrackSwitched?.({
+        id: data.id,
+        label: track?.label,
+        lang: track?.lang,
+        bitrate: track?.bitrate ?? null,
+        channels: track?.channels ?? null,
+        audioCodec: track?.audioCodec ?? null,
+      })
     })
 
     hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (_evt, data) => {
@@ -210,13 +226,19 @@ export default function useHlsPlayer({
         lang: track.lang || '',
         default: Boolean(track.default),
       }))
+      subtitleTracksRef.current = tracks
       setSubtitleTracks(tracks)
       setCurrentSubtitleTrack(hls.subtitleTrack)
     })
 
     hls.on(Hls.Events.SUBTITLE_TRACK_SWITCH, (_evt, data) => {
       setCurrentSubtitleTrack(data.id)
-      callbacksRef.current.onSubtitleTrackSwitched?.({ id: data.id })
+      const track = subtitleTracksRef.current.find((t) => t.id === data.id)
+      callbacksRef.current.onSubtitleTrackSwitched?.({
+        id: data.id,
+        label: data.id === -1 ? 'Off' : track?.label,
+        lang: track?.lang,
+      })
     })
 
     hls.on(Hls.Events.ERROR, (_evt, data) => {
