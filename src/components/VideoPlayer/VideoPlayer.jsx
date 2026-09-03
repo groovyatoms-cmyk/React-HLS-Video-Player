@@ -5,11 +5,22 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
-  useState,
+  useState
 } from 'react'
 import ReactPlayerImport from 'react-player'
 import Hls from 'hls.js'
-import { Play, Pause, Loader2, AlertTriangle, Copy, Info, X, ChevronRight, Camera, Repeat } from 'lucide-react'
+import {
+  Play,
+  Pause,
+  Loader2,
+  AlertTriangle,
+  Copy,
+  Info,
+  X,
+  ChevronRight,
+  Camera,
+  Repeat
+} from 'lucide-react'
 import useHlsPlayer from '../../hooks/useHlsPlayer'
 import useImaAds from '../../hooks/useImaAds'
 import PlayerControls from './PlayerControls'
@@ -24,7 +35,7 @@ import {
   isValidStreamUrl,
   readStorage,
   toPercent,
-  writeStorage,
+  writeStorage
 } from './playerUtils'
 import './VideoPlayer.css'
 
@@ -36,22 +47,25 @@ const ReactPlayer = ReactPlayerImport?.default ?? ReactPlayerImport
 
 const NATIVE_HLS_SUPPORTED =
   typeof document !== 'undefined' &&
-  Boolean(document.createElement('video').canPlayType('application/vnd.apple.mpegurl'))
+  Boolean(
+    document.createElement('video').canPlayType('application/vnd.apple.mpegurl')
+  )
 
 const ASPECT_PRESETS = { '16:9': '16 / 9', '4:3': '4 / 3', '21:9': '21 / 9' }
 
-function resolveAspectRatio(aspectRatio) {
+function resolveAspectRatio (aspectRatio) {
   if (!aspectRatio) return '16 / 9'
   if (typeof aspectRatio === 'number') return `${aspectRatio}`
   if (ASPECT_PRESETS[aspectRatio]) return ASPECT_PRESETS[aspectRatio]
-  if (/^\d+(\.\d+)?\s*:\s*\d+(\.\d+)?$/.test(aspectRatio)) return aspectRatio.replace(':', ' / ')
+  if (/^\d+(\.\d+)?\s*:\s*\d+(\.\d+)?$/.test(aspectRatio))
+    return aspectRatio.replace(':', ' / ')
   return aspectRatio
 }
 
 const CONTROLS_HIDE_DELAY = 2800
 const SKIP_BUTTON_DELAY = 3
 
-const VideoPlayer = forwardRef(function VideoPlayer(
+const VideoPlayer = forwardRef(function VideoPlayer (
   {
     src,
     poster,
@@ -114,9 +128,9 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     onPiPChange,
     onVolumeChange,
     onSeek,
-    onFragChanged,
+    onFragChanged
   },
-  ref,
+  ref
 ) {
   const wrapperRef = useRef(null)
   const nativeVideoRef = useRef(null)
@@ -149,12 +163,16 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     onSeek,
     onFullscreenChange,
     onPiPChange,
-    onWarning,
+    onWarning
   }
 
   const sourceType = useMemo(() => detectSourceType(src), [src])
   const validSource = useMemo(() => isValidStreamUrl(src), [src])
-  const useHlsJsBackend = validSource && sourceType === 'hls' && !NATIVE_HLS_SUPPORTED && Hls.isSupported()
+  const useHlsJsBackend =
+    validSource &&
+    sourceType === 'hls' &&
+    !NATIVE_HLS_SUPPORTED &&
+    Hls.isSupported()
   const useReactPlayerBackend = validSource && !useHlsJsBackend
 
   const [playing, setPlaying] = useState(false)
@@ -162,20 +180,28 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   const [duration, setDuration] = useState(0)
   const [buffered, setBuffered] = useState(0)
   const [seekableRange, setSeekableRange] = useState({ start: 0, end: 0 })
-  const [volume, setVolumeState] = useState(() => readStorage(STORAGE_KEYS.volume, 1))
-  const [muted, setMuted] = useState(() => readStorage(STORAGE_KEYS.muted, initialMuted))
-  const [playbackRate, setPlaybackRateState] = useState(() => readStorage(STORAGE_KEYS.playbackRate, 1))
+  const [volume, setVolumeState] = useState(() =>
+    readStorage(STORAGE_KEYS.volume, 1)
+  )
+  const [muted, setMuted] = useState(() =>
+    readStorage(STORAGE_KEYS.muted, initialMuted)
+  )
+  const [playbackRate, setPlaybackRateState] = useState(() =>
+    readStorage(STORAGE_KEYS.playbackRate, 1)
+  )
   const [buffering, setBuffering] = useState(false)
   const [mediaReady, setMediaReady] = useState(false)
   const [fatalMediaError, setFatalMediaError] = useState(null)
   const [fullscreenState, setFullscreenState] = useState(false)
-  const [theatreMode, setTheatreMode] = useState(() => readStorage(STORAGE_KEYS.theatreMode, false))
+  const [theatreMode, setTheatreMode] = useState(() =>
+    readStorage(STORAGE_KEYS.theatreMode, false)
+  )
   const [pip, setPip] = useState(false)
   const [pipSupported, setPipSupported] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
   const [pulse, setPulse] = useState(null) // { type, id }
   const pulseIdRef = useRef(0)
-  const triggerPulse = useCallback((type) => {
+  const triggerPulse = useCallback(type => {
     pulseIdRef.current += 1
     setPulse({ type, id: pulseIdRef.current })
   }, [])
@@ -202,32 +228,43 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   }, [abLoop])
   const lastSavedPositionRef = useRef(0)
   const resumedRef = useRef(false)
-  const [resolvedTheme, setResolvedTheme] = useState(theme === 'light' ? 'light' : 'dark')
+  const [resolvedTheme, setResolvedTheme] = useState(
+    theme === 'light' ? 'light' : 'dark'
+  )
 
-  const handleHlsError = useCallback((data) => {
+  const handleHlsError = useCallback(data => {
     callbacksRef.current.onError?.({
       type: data.type,
       details: data.details,
       fatal: data.fatal,
-      message: data.error?.message || data.details,
+      message: data.error?.message || data.details
     })
   }, [])
 
-  const handleHlsWarning = useCallback((data) => {
+  const handleHlsWarning = useCallback(data => {
     callbacksRef.current.onWarning?.({
       type: data.type,
       details: data.details,
-      message: data.error?.message || data.details,
+      message: data.error?.message || data.details
     })
   }, [])
 
   const handleLevelSwitched = useCallback(
-    (info) => onQualityChange?.(info),
-    [onQualityChange],
+    info => onQualityChange?.(info),
+    [onQualityChange]
   )
-  const handleAudioSwitched = useCallback((info) => onAudioChange?.(info), [onAudioChange])
-  const handleSubtitleSwitched = useCallback((info) => onSubtitleChange?.(info), [onSubtitleChange])
-  const handleFragChanged = useCallback((info) => onFragChanged?.(info), [onFragChanged])
+  const handleAudioSwitched = useCallback(
+    info => onAudioChange?.(info),
+    [onAudioChange]
+  )
+  const handleSubtitleSwitched = useCallback(
+    info => onSubtitleChange?.(info),
+    [onSubtitleChange]
+  )
+  const handleFragChanged = useCallback(
+    info => onFragChanged?.(info),
+    [onFragChanged]
+  )
 
   const hls = useHlsPlayer({
     videoRef: nativeVideoRef,
@@ -245,7 +282,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     onLevelSwitched: handleLevelSwitched,
     onAudioTrackSwitched: handleAudioSwitched,
     onSubtitleTrackSwitched: handleSubtitleSwitched,
-    onFragChanged: handleFragChanged,
+    onFragChanged: handleFragChanged
   })
 
   const ads = useImaAds({
@@ -258,8 +295,9 @@ const VideoPlayer = forwardRef(function VideoPlayer(
       mediaElRef.current?.pause()
     },
     onContentResumeRequested: () => {
-      if (wasPlayingBeforeAdRef.current) mediaElRef.current?.play().catch(() => {})
-    },
+      if (wasPlayingBeforeAdRef.current)
+        mediaElRef.current?.play().catch(() => {})
+    }
   })
 
   const isLive = hls.isLive || duration === Infinity
@@ -281,12 +319,14 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   const detachListeners = useCallback(() => {
     const rec = listenersRef.current
     if (!rec) return
-    Object.entries(rec.handlers).forEach(([evt, fn]) => rec.el.removeEventListener(evt, fn))
+    Object.entries(rec.handlers).forEach(([evt, fn]) =>
+      rec.el.removeEventListener(evt, fn)
+    )
     listenersRef.current = null
   }, [])
 
   const attachListeners = useCallback(
-    (el) => {
+    el => {
       if (!el) return
       const handlers = {
         play: () => setPlaying(true),
@@ -320,7 +360,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
             playedSeconds: el.currentTime,
             played: el.duration ? el.currentTime / el.duration : 0,
             loadedSeconds: bufferedRef.current,
-            loaded: el.duration ? bufferedRef.current / el.duration : 0,
+            loaded: el.duration ? bufferedRef.current / el.duration : 0
           })
           const loop = abLoopRef.current
           if (loop?.end != null && el.currentTime >= loop.end) {
@@ -350,7 +390,10 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         volumechange: () => {
           setVolumeState(el.volume)
           setMuted(el.muted)
-          callbacksRef.current.onVolumeChange?.({ volume: el.volume, muted: el.muted })
+          callbacksRef.current.onVolumeChange?.({
+            volume: el.volume,
+            muted: el.muted
+          })
         },
         ratechange: () => {
           setPlaybackRateState(el.playbackRate)
@@ -373,10 +416,17 @@ const VideoPlayer = forwardRef(function VideoPlayer(
             1: 'Playback was aborted.',
             2: 'A network error caused playback to fail.',
             3: 'The media could not be decoded.',
-            4: 'This media format or source is not supported.',
+            4: 'This media format or source is not supported.'
           }[mediaError.code]
-          setFatalMediaError({ type: 'MEDIA_ERROR', message: message || 'Unable to play this video.' })
-          callbacksRef.current.onError?.({ type: 'MEDIA_ERROR', code: mediaError.code, message })
+          setFatalMediaError({
+            type: 'MEDIA_ERROR',
+            message: message || 'Unable to play this video.'
+          })
+          callbacksRef.current.onError?.({
+            type: 'MEDIA_ERROR',
+            code: mediaError.code,
+            message
+          })
         },
         enterpictureinpicture: () => {
           setPip(true)
@@ -385,35 +435,39 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         leavepictureinpicture: () => {
           setPip(false)
           callbacksRef.current.onPiPChange?.(false)
-        },
+        }
       }
-      Object.entries(handlers).forEach(([evt, fn]) => el.addEventListener(evt, fn))
+      Object.entries(handlers).forEach(([evt, fn]) =>
+        el.addEventListener(evt, fn)
+      )
       listenersRef.current = { el, handlers }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [useHlsJsBackend],
+    [useHlsJsBackend]
   )
 
   const attachMedia = useCallback(
-    (el) => {
+    el => {
       if (!el || el === mediaElRef.current) return
       detachListeners()
       mediaElRef.current = el
       attachListeners(el)
-      setPipSupported(Boolean(document.pictureInPictureEnabled) && !el.disablePictureInPicture)
+      setPipSupported(
+        Boolean(document.pictureInPictureEnabled) && !el.disablePictureInPicture
+      )
       el.volume = volume
       el.playbackRate = playbackRate
       callbacksRef.current.onReady?.()
     },
-    [attachListeners, detachListeners, playbackRate, volume],
+    [attachListeners, detachListeners, playbackRate, volume]
   )
 
   const nativeVideoCallbackRef = useCallback(
-    (el) => {
+    el => {
       nativeVideoRef.current = el
       if (el) attachMedia(el)
     },
-    [attachMedia],
+    [attachMedia]
   )
 
   useEffect(() => {
@@ -445,21 +499,27 @@ const VideoPlayer = forwardRef(function VideoPlayer(
 
   // ---- load timeout safeguard: never get stuck on "Loading…" forever ----
   useEffect(() => {
-    if (!validSource || mediaReady || fatalMediaError || hls.fatalError) return undefined
+    if (!validSource || mediaReady || fatalMediaError || hls.fatalError)
+      return undefined
     const timer = setTimeout(() => {
       setFatalMediaError({
         type: 'TIMEOUT',
-        message: 'The stream took too long to load. Please check the URL and try again.',
+        message:
+          'The stream took too long to load. Please check the URL and try again.'
       })
     }, 20000)
     return () => clearTimeout(timer)
   }, [validSource, mediaReady, src, fatalMediaError, hls.fatalError])
 
-  const positionStorageKey = useMemo(() => `video-player-position-${encodeURIComponent(src || '')}`, [src])
+  const positionStorageKey = useMemo(
+    () => `video-player-position-${encodeURIComponent(src || '')}`,
+    [src]
+  )
 
   // ---- continue watching: resume last position once metadata is known ----
   useEffect(() => {
-    if (!rememberPosition || resumedRef.current || !mediaReady || duration <= 0) return
+    if (!rememberPosition || resumedRef.current || !mediaReady || duration <= 0)
+      return
     resumedRef.current = true
     const saved = readStorage(positionStorageKey, 0)
     if (saved > 5 && saved < duration - 10) {
@@ -488,7 +548,13 @@ const VideoPlayer = forwardRef(function VideoPlayer(
 
   // ---- up next autoplay card ------------------------------------------------
   useEffect(() => {
-    if (!upNext || duration <= 0 || upNextCancelledRef.current || upNextFiredRef.current) return
+    if (
+      !upNext ||
+      duration <= 0 ||
+      upNextCancelledRef.current ||
+      upNextFiredRef.current
+    )
+      return
     const remaining = duration - currentTime
     if (remaining <= autoplayNextDelay && remaining > 0) {
       setUpNextCountdown(Math.ceil(remaining))
@@ -522,7 +588,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     appliedPrefsRef.current = true
     const preferredHeight = readStorage(STORAGE_KEYS.quality, 'auto')
     if (preferredHeight !== 'auto') {
-      const match = hls.levels.find((l) => l.height === preferredHeight)
+      const match = hls.levels.find(l => l.height === preferredHeight)
       if (match) hls.setQuality(match.index)
     }
   }, [hls, hls.levels])
@@ -531,16 +597,21 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     if (hls.subtitleTracks.length === 0) return
     const preferredLang = readStorage(STORAGE_KEYS.subtitle, null)
     if (!preferredLang) return
-    const match = hls.subtitleTracks.find((t) => t.lang === preferredLang)
+    const match = hls.subtitleTracks.find(t => t.lang === preferredLang)
     if (match) hls.setSubtitleTrack(match.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hls.subtitleTracks])
 
   // ---- intro / credits skip ----------------------------------------------
   useEffect(() => {
-    const seg = introRange && currentTime >= introRange.start && currentTime < introRange.end
-      ? { key: 'intro', range: introRange, label: 'Skip Intro' }
-      : creditsRange && currentTime >= creditsRange.start && currentTime < creditsRange.end
+    const seg =
+      introRange &&
+      currentTime >= introRange.start &&
+      currentTime < introRange.end
+        ? { key: 'intro', range: introRange, label: 'Skip Intro' }
+        : creditsRange &&
+          currentTime >= creditsRange.start &&
+          currentTime < creditsRange.end
         ? { key: 'credits', range: creditsRange, label: 'Skip Credits' }
         : null
 
@@ -564,23 +635,39 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   // ---- imperative media controls -----------------------------------------
   const mediaControls = useMemo(
     () => ({
-      play: () => mediaElRef.current?.play().catch((err) => callbacksRef.current.onError?.({ type: 'PLAY_REJECTED', message: err.message })),
+      play: () =>
+        mediaElRef.current
+          ?.play()
+          .catch(err =>
+            callbacksRef.current.onError?.({
+              type: 'PLAY_REJECTED',
+              message: err.message
+            })
+          ),
       pause: () => mediaElRef.current?.pause(),
-      seekTo: (seconds) => {
+      seekTo: seconds => {
         const el = mediaElRef.current
         if (!el) return
-        const target = clamp(seconds, 0, Number.isFinite(el.duration) ? el.duration : seconds)
+        const target = clamp(
+          seconds,
+          0,
+          Number.isFinite(el.duration) ? el.duration : seconds
+        )
         el.currentTime = target
         setCurrentTime(target)
       },
-      seekBy: (delta) => {
+      seekBy: delta => {
         const el = mediaElRef.current
         if (!el) return
-        const target = clamp(el.currentTime + delta, 0, Number.isFinite(el.duration) ? el.duration : el.currentTime + delta)
+        const target = clamp(
+          el.currentTime + delta,
+          0,
+          Number.isFinite(el.duration) ? el.duration : el.currentTime + delta
+        )
         el.currentTime = target
         setCurrentTime(target)
       },
-      setVolume: (v) => {
+      setVolume: v => {
         const el = mediaElRef.current
         const next = clamp(v, 0, 1)
         if (el) {
@@ -590,7 +677,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         setVolumeState(next)
         writeStorage(STORAGE_KEYS.volume, next)
       },
-      setMuted: (value) => {
+      setMuted: value => {
         const el = mediaElRef.current
         if (el) el.muted = value
         setMuted(value)
@@ -603,14 +690,14 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         setMuted(next)
         writeStorage(STORAGE_KEYS.muted, next)
       },
-      setPlaybackRate: (rate) => {
+      setPlaybackRate: rate => {
         const el = mediaElRef.current
         if (el) el.playbackRate = rate
         setPlaybackRateState(rate)
         writeStorage(STORAGE_KEYS.playbackRate, rate)
-      },
+      }
     }),
-    [muted],
+    [muted]
   )
 
   const togglePlay = useCallback(() => {
@@ -654,16 +741,20 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     const el = mediaElRef.current
     if (!el) return
     try {
-      if (document.pictureInPictureElement === el) await document.exitPictureInPicture()
+      if (document.pictureInPictureElement === el)
+        await document.exitPictureInPicture()
       else await el.requestPictureInPicture()
     } catch (err) {
-      callbacksRef.current.onError?.({ type: 'PIP_ERROR', message: err.message })
+      callbacksRef.current.onError?.({
+        type: 'PIP_ERROR',
+        message: err.message
+      })
     }
   }, [])
 
   // ---- theatre mode ----------------------------------------------------------
   const toggleTheatre = useCallback(() => {
-    setTheatreMode((prev) => {
+    setTheatreMode(prev => {
       const next = !prev
       writeStorage(STORAGE_KEYS.theatreMode, next)
       return next
@@ -672,24 +763,28 @@ const VideoPlayer = forwardRef(function VideoPlayer(
 
   // ---- sleep timer ----------------------------------------------------------
   const setSleepTimer = useCallback(
-    (minutes) => {
+    minutes => {
       clearTimeout(sleepTimerTimeoutRef.current)
       sleepAtEndRef.current = false
       setSleepTimerMinutes(minutes)
       if (!minutes) return
       if (minutes === 'end') {
         sleepAtEndRef.current = true
-        showToast('Sleep timer set: playback will pause at the end of this video')
+        showToast(
+          'Sleep timer set: playback will pause at the end of this video'
+        )
         return
       }
-      showToast(`Sleep timer set for ${minutes} minute${minutes === 1 ? '' : 's'}`)
+      showToast(
+        `Sleep timer set for ${minutes} minute${minutes === 1 ? '' : 's'}`
+      )
       sleepTimerTimeoutRef.current = setTimeout(() => {
         mediaElRef.current?.pause()
         setSleepTimerMinutes(0)
         showToast('Sleep timer: playback paused')
       }, minutes * 60 * 1000)
     },
-    [showToast],
+    [showToast]
   )
 
   useEffect(() => () => clearTimeout(sleepTimerTimeoutRef.current), [])
@@ -699,7 +794,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     setAbLoop({ start: mediaElRef.current?.currentTime ?? 0 })
   }, [])
   const setLoopPointB = useCallback(() => {
-    setAbLoop((prev) => {
+    setAbLoop(prev => {
       const end = mediaElRef.current?.currentTime ?? 0
       if (!prev || end <= prev.start) return prev
       return { start: prev.start, end }
@@ -717,7 +812,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
       canvas.height = el.videoHeight
       const ctx = canvas.getContext('2d')
       ctx.drawImage(el, 0, 0, canvas.width, canvas.height)
-      canvas.toBlob((blob) => {
+      canvas.toBlob(blob => {
         if (!blob) return
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -759,23 +854,23 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   }, [hls])
 
   const setQuality = useCallback(
-    (index) => {
+    index => {
       hls.setQuality(index)
-      const level = hls.levels.find((l) => l.index === index)
+      const level = hls.levels.find(l => l.index === index)
       writeStorage(STORAGE_KEYS.quality, level ? level.height : 'auto')
     },
-    [hls],
+    [hls]
   )
 
-  const setAudioTrack = useCallback((id) => hls.setAudioTrack(id), [hls])
+  const setAudioTrack = useCallback(id => hls.setAudioTrack(id), [hls])
 
   const setSubtitleTrack = useCallback(
-    (id) => {
+    id => {
       hls.setSubtitleTrack(id)
-      const track = hls.subtitleTracks.find((t) => t.id === id)
+      const track = hls.subtitleTracks.find(t => t.id === id)
       writeStorage(STORAGE_KEYS.subtitle, track ? track.lang : null)
     },
-    [hls],
+    [hls]
   )
 
   // ---- controls auto-hide -----------------------------------------------------
@@ -783,7 +878,10 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     setControlsVisible(true)
     clearTimeout(hideTimerRef.current)
     if (playing) {
-      hideTimerRef.current = setTimeout(() => setControlsVisible(false), CONTROLS_HIDE_DELAY)
+      hideTimerRef.current = setTimeout(
+        () => setControlsVisible(false),
+        CONTROLS_HIDE_DELAY
+      )
     }
   }, [playing])
 
@@ -794,7 +892,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
 
   // ---- keyboard shortcuts -----------------------------------------------------
   const handleKeyDown = useCallback(
-    (e) => {
+    e => {
       if (!keyboardShortcuts) return
       if (isTypingTarget(e.target)) return
       const el = mediaElRef.current
@@ -854,11 +952,16 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         case '>':
         case '.': {
           const idx = SPEED_OPTIONS.indexOf(playbackRate)
-          if (idx !== -1 && idx < SPEED_OPTIONS.length - 1) mediaControls.setPlaybackRate(SPEED_OPTIONS[idx + 1])
+          if (idx !== -1 && idx < SPEED_OPTIONS.length - 1)
+            mediaControls.setPlaybackRate(SPEED_OPTIONS[idx + 1])
           break
         }
         default:
-          if (/^[0-9]$/.test(e.key) && Number.isFinite(duration) && duration > 0) {
+          if (
+            /^[0-9]$/.test(e.key) &&
+            Number.isFinite(duration) &&
+            duration > 0
+          ) {
             mediaControls.seekTo((Number(e.key) / 10) * duration)
           }
       }
@@ -879,8 +982,8 @@ const VideoPlayer = forwardRef(function VideoPlayer(
       toggleCaptions,
       playbackRate,
       duration,
-      showControls,
-    ],
+      showControls
+    ]
   )
 
   // ---- double click zones -----------------------------------------------------
@@ -893,7 +996,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   }, [togglePlay])
 
   const handleVideoDoubleClick = useCallback(
-    (e) => {
+    e => {
       clearTimeout(clickTimerRef.current)
       clickTimerRef.current = null
       if (!doubleClickToSeek) {
@@ -912,11 +1015,18 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         toggleFullscreen()
       }
     },
-    [doubleClickToSeek, doubleClickSeekSeconds, fullscreenEnabled, mediaControls, toggleFullscreen, triggerPulse],
+    [
+      doubleClickToSeek,
+      doubleClickSeekSeconds,
+      fullscreenEnabled,
+      mediaControls,
+      toggleFullscreen,
+      triggerPulse
+    ]
   )
 
   // ---- context menu -------------------------------------------------------------
-  const handleContextMenu = useCallback((e) => {
+  const handleContextMenu = useCallback(e => {
     e.preventDefault()
     setContextMenu({ x: e.clientX, y: e.clientY })
   }, [])
@@ -932,7 +1042,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     }
   }, [contextMenu])
 
-  const copyText = useCallback(async (text) => {
+  const copyText = useCallback(async text => {
     try {
       await navigator.clipboard.writeText(text)
     } catch {
@@ -950,7 +1060,9 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         /* fall through to clipboard copy */
       }
     }
-    await copyText(`${url.split('#')[0].split('?')[0]}?t=${Math.floor(currentTime)}`)
+    await copyText(
+      `${url.split('#')[0].split('?')[0]}?t=${Math.floor(currentTime)}`
+    )
   }, [copyText, currentTime])
 
   // ---- imperative ref API -----------------------------------------------------
@@ -959,14 +1071,17 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     () => ({
       play: () => mediaControls.play(),
       pause: () => mediaControls.pause(),
-      seekTo: (seconds) => mediaControls.seekTo(seconds),
-      setVolume: (v) => mediaControls.setVolume(v),
+      seekTo: seconds => mediaControls.seekTo(seconds),
+      setVolume: v => mediaControls.setVolume(v),
       toggleMute: () => mediaControls.toggleMute(),
       enterFullscreen,
       exitFullscreen,
       toggleTheatreMode: toggleTheatre,
       getCurrentTime: () => mediaElRef.current?.currentTime ?? 0,
-      getDuration: () => (Number.isFinite(mediaElRef.current?.duration) ? mediaElRef.current.duration : 0),
+      getDuration: () =>
+        Number.isFinite(mediaElRef.current?.duration)
+          ? mediaElRef.current.duration
+          : 0,
       getQualities: () => hls.levels,
       getAudioTracks: () => hls.audioTracks,
       getSubtitleTracks: () => hls.subtitleTracks,
@@ -980,9 +1095,17 @@ const VideoPlayer = forwardRef(function VideoPlayer(
       startLoad: () => hls.resumeLoad(),
       swapAudioCodec: () => hls.swapAudioCodec(),
       getBandwidthEstimate: () => hls.getBandwidthEstimate(),
-      getStats: () => hls.getStats(),
+      getStats: () => hls.getStats()
     }),
-    [mediaControls, enterFullscreen, exitFullscreen, toggleTheatre, hls, ads, goLive],
+    [
+      mediaControls,
+      enterFullscreen,
+      exitFullscreen,
+      toggleTheatre,
+      hls,
+      ads,
+      goLive
+    ]
   )
 
   // ---- render helpers -----------------------------------------------------------
@@ -992,7 +1115,10 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     return level?.height ?? null
   }, [hls])
 
-  const aspectCss = useMemo(() => resolveAspectRatio(aspectRatio), [aspectRatio])
+  const aspectCss = useMemo(
+    () => resolveAspectRatio(aspectRatio),
+    [aspectRatio]
+  )
 
   const subtitleCssVars = useMemo(() => {
     if (!subtitleStyle) return {}
@@ -1000,12 +1126,15 @@ const VideoPlayer = forwardRef(function VideoPlayer(
       '--pv-subtitle-size': subtitleStyle.fontSize,
       '--pv-subtitle-color': subtitleStyle.color,
       '--pv-subtitle-bg': subtitleStyle.background,
-      '--pv-subtitle-shadow': subtitleStyle.textShadow,
+      '--pv-subtitle-shadow': subtitleStyle.textShadow
     }
   }, [subtitleStyle])
 
-  const showBigLoading = !mediaReady && !fatalMediaError && !hls.fatalError && validSource
-  const activeError = fatalMediaError || (hls.fatalError && useHlsJsBackend ? hls.fatalError : null)
+  const showBigLoading =
+    !mediaReady && !fatalMediaError && !hls.fatalError && validSource
+  const activeError =
+    fatalMediaError ||
+    (hls.fatalError && useHlsJsBackend ? hls.fatalError : null)
 
   const retryPlayback = useCallback(() => {
     setFatalMediaError(null)
@@ -1018,7 +1147,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     className,
     theatreMode && 'pv-wrapper--theatre',
     fullscreenState && 'pv-wrapper--fullscreen',
-    !controlsVisible && playing && 'pv-wrapper--hide-cursor',
+    !controlsVisible && playing && 'pv-wrapper--hide-cursor'
   ]
     .filter(Boolean)
     .join(' ')
@@ -1037,10 +1166,15 @@ const VideoPlayer = forwardRef(function VideoPlayer(
       onTouchStart={showControls}
       onContextMenu={handleContextMenu}
     >
-      <div className="pv-frame" style={{ aspectRatio: fullscreenState || theatreMode ? undefined : aspectCss }}>
+      <div
+        className='pv-frame'
+        style={{
+          aspectRatio: fullscreenState || theatreMode ? undefined : aspectCss
+        }}
+      >
         {!validSource ? (
-          <div className="pv-error">
-            <AlertTriangle size={40} aria-hidden="true" />
+          <div className='pv-error'>
+            <AlertTriangle size={40} aria-hidden='true' />
             <p>No valid video source provided.</p>
           </div>
         ) : (
@@ -1049,7 +1183,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
               <video
                 key={src}
                 ref={nativeVideoCallbackRef}
-                className="pv-video"
+                className='pv-video'
                 poster={poster}
                 muted={muted}
                 loop={loop}
@@ -1059,7 +1193,11 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                 onDoubleClick={handleVideoDoubleClick}
               />
             ) : (
-              <div className="pv-video" onClick={handleVideoClick} onDoubleClick={handleVideoDoubleClick}>
+              <div
+                className='pv-video'
+                onClick={handleVideoClick}
+                onDoubleClick={handleVideoDoubleClick}
+              >
                 <ReactPlayer
                   key={src}
                   ref={reactPlayerRef}
@@ -1067,21 +1205,32 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                   playing={autoplay}
                   muted={muted}
                   loop={loop}
-                  width="100%"
-                  height="100%"
+                  width='100%'
+                  height='100%'
                   playsinline
-                  config={{ file: { attributes: { poster, playsInline: true } } }}
-                  onError={(err) => callbacksRef.current.onError?.({ type: 'PLAYER_ERROR', message: String(err) })}
+                  config={{
+                    file: { attributes: { poster, playsInline: true } }
+                  }}
+                  onError={err =>
+                    callbacksRef.current.onError?.({
+                      type: 'PLAYER_ERROR',
+                      message: String(err)
+                    })
+                  }
                 />
               </div>
             )}
 
-            <div ref={adContainerRef} className="pv-ad-container" hidden={!ads.adState.playing} />
+            <div
+              ref={adContainerRef}
+              className='pv-ad-container'
+              hidden={!ads.adState.playing}
+            />
 
             {controls && !ads.adState.playing && (
               <button
-                type="button"
-                className="pv-center-toggle"
+                type='button'
+                className='pv-center-toggle'
                 aria-label={playing ? 'Pause' : 'Play'}
                 onClick={handleVideoClick}
                 onDoubleClick={handleVideoDoubleClick}
@@ -1090,45 +1239,69 @@ const VideoPlayer = forwardRef(function VideoPlayer(
             )}
 
             {pulse && (
-              <div className="pv-pulse" key={pulse.id} onAnimationEnd={() => setPulse(null)}>
-                {pulse.type === 'play' && <Play size={34} aria-hidden="true" />}
-                {pulse.type === 'pause' && <Pause size={34} aria-hidden="true" />}
-                {pulse.type === 'rewind' && <span className="pv-pulse__seek">-{doubleClickSeekSeconds}s</span>}
-                {pulse.type === 'forward' && <span className="pv-pulse__seek">+{doubleClickSeekSeconds}s</span>}
+              <div
+                className='pv-pulse'
+                key={pulse.id}
+                onAnimationEnd={() => setPulse(null)}
+              >
+                {pulse.type === 'play' && <Play size={34} aria-hidden='true' />}
+                {pulse.type === 'pause' && (
+                  <Pause size={34} aria-hidden='true' />
+                )}
+                {pulse.type === 'rewind' && (
+                  <span className='pv-pulse__seek'>
+                    -{doubleClickSeekSeconds}s
+                  </span>
+                )}
+                {pulse.type === 'forward' && (
+                  <span className='pv-pulse__seek'>
+                    +{doubleClickSeekSeconds}s
+                  </span>
+                )}
               </div>
             )}
 
             {showBigLoading && (
-              <div className="pv-overlay pv-overlay--loading">
-                <Loader2 className="pv-spinner" size={44} aria-hidden="true" />
+              <div className='pv-overlay pv-overlay--loading'>
+                <Loader2 className='pv-spinner' size={44} aria-hidden='true' />
                 <span>Loading&hellip;</span>
               </div>
             )}
 
             {!showBigLoading && buffering && playing && !activeError && (
-              <div className="pv-overlay pv-overlay--buffering">
-                <Loader2 className="pv-spinner" size={36} aria-hidden="true" />
+              <div className='pv-overlay pv-overlay--buffering'>
+                <Loader2 className='pv-spinner' size={36} aria-hidden='true' />
               </div>
             )}
 
             {activeError && (
-              <div className="pv-overlay pv-overlay--error">
-                <AlertTriangle size={40} aria-hidden="true" />
-                <p className="pv-overlay__title">Unable to play this video</p>
-                <p className="pv-overlay__subtitle">{activeError.message || 'The stream could not be loaded.'}</p>
-                <button type="button" className="pv-retry-btn" onClick={retryPlayback}>
+              <div className='pv-overlay pv-overlay--error'>
+                <AlertTriangle size={40} aria-hidden='true' />
+                <p className='pv-overlay__title'>Unable to play this video</p>
+                <p className='pv-overlay__subtitle'>
+                  {activeError.message || 'The stream could not be loaded.'}
+                </p>
+                <button
+                  type='button'
+                  className='pv-retry-btn'
+                  onClick={retryPlayback}
+                >
                   Retry
                 </button>
               </div>
             )}
 
             {ads.adState.playing && (
-              <div className="pv-ad-bar">
-                <span className="pv-ad-badge">Ad</span>
+              <div className='pv-ad-bar'>
+                <span className='pv-ad-badge'>Ad</span>
                 <span>{formatTime(ads.adState.remaining)}</span>
                 {ads.adState.skippable && (
-                  <button type="button" className="pv-ad-skip" onClick={ads.skipAd}>
-                    Skip Ad <ChevronRight size={14} aria-hidden="true" />
+                  <button
+                    type='button'
+                    className='pv-ad-skip'
+                    onClick={ads.skipAd}
+                  >
+                    Skip Ad <ChevronRight size={14} aria-hidden='true' />
                   </button>
                 )}
               </div>
@@ -1136,29 +1309,41 @@ const VideoPlayer = forwardRef(function VideoPlayer(
 
             {skipInfo && !ads.adState.playing && (
               <button
-                type="button"
-                className="pv-skip-btn"
+                type='button'
+                className='pv-skip-btn'
                 onClick={() => mediaControls.seekTo(skipInfo.range.end)}
               >
-                {skipInfo.label} <ChevronRight size={16} aria-hidden="true" />
+                {skipInfo.label} <ChevronRight size={16} aria-hidden='true' />
               </button>
             )}
 
-            {toast && (
-              <div className="pv-toast">{toast}</div>
-            )}
+            {toast && <div className='pv-toast'>{toast}</div>}
 
             {upNextCountdown !== null && !ads.adState.playing && (
-              <div className="pv-upnext">
-                {upNext.thumbnail && <img src={upNext.thumbnail} alt="" className="pv-upnext__thumb" />}
-                <div className="pv-upnext__body">
-                  <p className="pv-upnext__eyebrow">Up next</p>
-                  <p className="pv-upnext__title">{upNext.title}</p>
-                  <div className="pv-upnext__actions">
-                    <button type="button" className="pv-upnext__play" onClick={playUpNextNow}>
+              <div className='pv-upnext'>
+                {upNext.thumbnail && (
+                  <img
+                    src={upNext.thumbnail}
+                    alt=''
+                    className='pv-upnext__thumb'
+                  />
+                )}
+                <div className='pv-upnext__body'>
+                  <p className='pv-upnext__eyebrow'>Up next</p>
+                  <p className='pv-upnext__title'>{upNext.title}</p>
+                  <div className='pv-upnext__actions'>
+                    <button
+                      type='button'
+                      className='pv-upnext__play'
+                      onClick={playUpNextNow}
+                    >
                       Play now
                     </button>
-                    <button type="button" className="pv-upnext__cancel" onClick={cancelUpNext}>
+                    <button
+                      type='button'
+                      className='pv-upnext__cancel'
+                      onClick={cancelUpNext}
+                    >
                       Cancel ({upNextCountdown}s)
                     </button>
                   </div>
@@ -1167,8 +1352,11 @@ const VideoPlayer = forwardRef(function VideoPlayer(
             )}
 
             {!controlsVisible && playing && !ads.adState.playing && (
-              <div className="pv-thin-progress">
-                <div className="pv-thin-progress__fill" style={{ width: `${toPercent(currentTime, duration)}%` }} />
+              <div className='pv-thin-progress'>
+                <div
+                  className='pv-thin-progress__fill'
+                  style={{ width: `${toPercent(currentTime, duration)}%` }}
+                />
               </div>
             )}
 
@@ -1202,7 +1390,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                   seekableEnd: seekableRange.end,
                   sleepTimerMinutes,
                   abLoop,
-                  thumbnails,
+                  thumbnails
                 }}
                 flags={{
                   qualitySelector: qualitySelector && useHlsJsBackend,
@@ -1213,7 +1401,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                   pictureInPicture: pipEnabled,
                   theatreMode: theatreEnabled,
                   share: shareEnabled,
-                  sleepTimer: sleepTimerEnabled,
+                  sleepTimer: sleepTimerEnabled
                 }}
                 actions={{
                   togglePlay,
@@ -1237,7 +1425,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                   togglePiP,
                   toggleTheatre,
                   goLive,
-                  onShare: handleShare,
+                  onShare: handleShare
                 }}
               />
             )}
@@ -1246,49 +1434,69 @@ const VideoPlayer = forwardRef(function VideoPlayer(
       </div>
 
       {debug && mediaReady && (
-        <StatsPanel getStats={hls.getStats} currentTime={currentTime} buffering={buffering} pinned onClose={null} />
+        <StatsPanel
+          getStats={hls.getStats}
+          currentTime={currentTime}
+          buffering={buffering}
+          pinned
+          onClose={null}
+        />
       )}
 
       {statsVisible && (
-        <StatsPanel getStats={hls.getStats} currentTime={currentTime} buffering={buffering} onClose={() => setStatsVisible(false)} />
+        <StatsPanel
+          getStats={hls.getStats}
+          currentTime={currentTime}
+          buffering={buffering}
+          onClose={() => setStatsVisible(false)}
+        />
       )}
 
       {contextMenu && (
         <div
-          className="pv-context-menu"
+          className='pv-context-menu'
           style={{ left: contextMenu.x, top: contextMenu.y }}
-          role="menu"
+          role='menu'
         >
-          <button type="button" onClick={() => copyText(window.location.href)}>
-            <Copy size={14} aria-hidden="true" /> Copy video URL
+          <button type='button' onClick={() => copyText(window.location.href)}>
+            <Copy size={14} aria-hidden='true' /> Copy video URL
           </button>
           <button
-            type="button"
-            onClick={() => copyText(`${window.location.href.split('?')[0]}?t=${Math.floor(currentTime)}`)}
+            type='button'
+            onClick={() =>
+              copyText(
+                `${window.location.href.split('?')[0]}?t=${Math.floor(
+                  currentTime
+                )}`
+              )
+            }
           >
-            <Copy size={14} aria-hidden="true" /> Copy timestamp
+            <Copy size={14} aria-hidden='true' /> Copy timestamp
           </button>
-          <button type="button" onClick={() => setStatsVisible(true)}>
-            <Info size={14} aria-hidden="true" /> Stats for nerds
+          <button type='button' onClick={() => setStatsVisible(true)}>
+            <Info size={14} aria-hidden='true' /> Stats for nerds
           </button>
           {screenshotEnabled && (
-            <button type="button" onClick={captureScreenshot}>
-              <Camera size={14} aria-hidden="true" /> Save screenshot
+            <button type='button' onClick={captureScreenshot}>
+              <Camera size={14} aria-hidden='true' /> Save screenshot
             </button>
           )}
           {abLoopEnabled && !abLoop && (
-            <button type="button" onClick={setLoopPointA}>
-              <Repeat size={14} aria-hidden="true" /> Set loop point A
+            <button type='button' onClick={setLoopPointA}>
+              <Repeat size={14} aria-hidden='true' /> Set loop point A
             </button>
           )}
           {abLoopEnabled && abLoop && !abLoop.end && (
-            <button type="button" onClick={setLoopPointB}>
-              <Repeat size={14} aria-hidden="true" /> Set loop point B
+            <button type='button' onClick={setLoopPointB}>
+              <Repeat size={14} aria-hidden='true' /> Set loop point B
             </button>
           )}
           {abLoopEnabled && abLoop && (
-            <button type="button" onClick={clearAbLoop}>
-              <Repeat size={14} aria-hidden="true" /> Clear loop{abLoop.end ? ` (${formatTime(abLoop.start)}–${formatTime(abLoop.end)})` : ''}
+            <button type='button' onClick={clearAbLoop}>
+              <Repeat size={14} aria-hidden='true' /> Clear loop
+              {abLoop.end
+                ? ` (${formatTime(abLoop.start)}–${formatTime(abLoop.end)})`
+                : ''}
             </button>
           )}
         </div>
@@ -1297,7 +1505,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   )
 })
 
-function StatsPanel({ getStats, currentTime, buffering, onClose, pinned }) {
+function StatsPanel ({ getStats, currentTime, buffering, onClose, pinned }) {
   const [stats, setStats] = useState(null)
 
   useEffect(() => {
@@ -1310,11 +1518,16 @@ function StatsPanel({ getStats, currentTime, buffering, onClose, pinned }) {
   return (
     <div className={`pv-stats${pinned ? ' pv-stats--pinned' : ''}`}>
       {!pinned && (
-        <button type="button" className="pv-stats__close" onClick={onClose} aria-label="Close stats">
-          <X size={14} aria-hidden="true" />
+        <button
+          type='button'
+          className='pv-stats__close'
+          onClick={onClose}
+          aria-label='Close stats'
+        >
+          <X size={14} aria-hidden='true' />
         </button>
       )}
-      <p className="pv-stats__title">Stream Information</p>
+      <p className='pv-stats__title'>Stream Information</p>
       <dl>
         <dt>Resolution</dt>
         <dd>{stats?.resolution || '—'}</dd>
