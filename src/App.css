@@ -1,0 +1,247 @@
+.demo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-areas:
+    'header header'
+    'player panel';
+  gap: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.demo__header {
+  grid-area: header;
+}
+
+.demo__header h1 {
+  font-size: 28px;
+  letter-spacing: -0.01em;
+  background: linear-gradient(90deg, #6d28d9, #a78bfa 60%, #b7862a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+}
+
+.demo__header p {
+  color: var(--app-muted-text);
+  margin: 0;
+  max-width: 640px;
+}
+
+.demo__player-col {
+  grid-area: player;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.demo__stream-info {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(30, 16, 51, 0.04), 0 8px 24px rgba(109, 40, 217, 0.06);
+}
+
+.demo__stream-info > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.demo__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--app-muted-text);
+}
+
+.demo__value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.demo__value--url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.demo__panel {
+  grid-area: panel;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  padding: 18px;
+  align-self: start;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  box-shadow: 0 1px 2px rgba(30, 16, 51, 0.04), 0 8px 24px rgba(109, 40, 217, 0.06);
+}
+
+.demo__panel h2 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.demo__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.demo__field--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.demo__field label,
+.demo__field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-muted-text);
+}
+
+.demo__field input[type='text'] {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--app-border);
+  font-size: 13px;
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+.demo__field button[type='submit'] {
+  align-self: flex-start;
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: none;
+  background: #6d28d9;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.demo__chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.demo__chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.demo__chip--active {
+  background: #6d28d9;
+  color: #fff;
+  border-color: #6d28d9;
+}
+
+.demo__toggle-group {
+  display: inline-flex;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.demo__toggle {
+  padding: 5px 12px;
+  border: none;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-size: 12px;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.demo__toggle--active {
+  background: #6d28d9;
+  color: #fff;
+}
+
+.demo__color-input {
+  width: 34px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+
+.demo__events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 12px;
+  background: var(--app-bg);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.demo__events li {
+  padding: 3px 4px;
+  border-bottom: 1px dashed var(--app-border);
+}
+
+.demo__events li:last-child {
+  border-bottom: none;
+}
+
+.demo__events-time {
+  color: var(--app-muted-text);
+  font-family: var(--mono);
+  margin-right: 6px;
+}
+
+.demo__events-empty {
+  color: var(--app-muted-text);
+  font-style: italic;
+}
+
+@media (max-width: 960px) {
+  .demo {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'header'
+      'player'
+      'panel';
+  }
+
+  .demo__stream-info {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .demo__panel {
+    max-height: none;
+  }
+}
