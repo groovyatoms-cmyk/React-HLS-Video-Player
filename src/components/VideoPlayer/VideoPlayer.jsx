@@ -128,6 +128,8 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     onPlaybackRateChange,
     onVolumeChange,
     onSeek,
+    onFullscreenChange,
+    onPiPChange,
   }
 
   const sourceType = useMemo(() => detectSourceType(src), [src])
@@ -193,6 +195,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
 
   const ads = useImaAds({
     adTagUrl,
+    src,
     videoRef: mediaElRef,
     containerRef: adContainerRef,
     onContentPauseRequested: () => {
@@ -204,7 +207,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     },
   })
 
-  const isLive = hls.isLive || (Number.isFinite(duration) === false && duration === Infinity)
+  const isLive = hls.isLive || duration === Infinity
 
   // ---- theme resolution -------------------------------------------------
   useEffect(() => {
@@ -306,18 +309,18 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         },
         enterpictureinpicture: () => {
           setPip(true)
-          onPiPChange?.(true)
+          callbacksRef.current.onPiPChange?.(true)
         },
         leavepictureinpicture: () => {
           setPip(false)
-          onPiPChange?.(false)
+          callbacksRef.current.onPiPChange?.(false)
         },
       }
       Object.entries(handlers).forEach(([evt, fn]) => el.addEventListener(evt, fn))
       listenersRef.current = { el, handlers }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [useHlsJsBackend, onPiPChange],
+    [useHlsJsBackend],
   )
 
   const attachMedia = useCallback(
@@ -569,7 +572,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     const handler = () => {
       const isFs = document.fullscreenElement === wrapperRef.current
       setFullscreenState(isFs)
-      onFullscreenChange?.(isFs)
+      callbacksRef.current.onFullscreenChange?.(isFs)
     }
     document.addEventListener('fullscreenchange', handler)
     return () => document.removeEventListener('fullscreenchange', handler)

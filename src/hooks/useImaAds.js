@@ -32,7 +32,7 @@ function loadImaSdk() {
  * the creative itself is swallowed and simply resumes/starts content
  * playback — a broken ad must never block the actual video.
  */
-export default function useImaAds({ adTagUrl, videoRef, containerRef, onContentPauseRequested, onContentResumeRequested }) {
+export default function useImaAds({ adTagUrl, src, videoRef, containerRef, onContentPauseRequested, onContentResumeRequested }) {
   const [adState, setAdState] = useState({
     loading: false,
     playing: false,
@@ -59,6 +59,15 @@ export default function useImaAds({ adTagUrl, videoRef, containerRef, onContentP
   }, [])
 
   useEffect(() => () => destroy(), [destroy])
+
+  // Reset the one-shot request guard whenever the video source (or its ad
+  // tag) changes, so pre-rolls aren't limited to the very first video loaded
+  // in this VideoPlayer instance. Also tear down any ads manager/loader left
+  // over from the previous video rather than leaking them.
+  useEffect(() => {
+    destroy()
+    requestedRef.current = false
+  }, [src, adTagUrl, destroy])
 
   const requestAds = useCallback(async () => {
     if (!adTagUrl || requestedRef.current) return

@@ -188,8 +188,10 @@ export default function useHlsPlayer({
           }
           break
         default:
+          // Leave the hls.js instance alive (matches the NETWORK_ERROR/MEDIA_ERROR
+          // branches above) so retry() can reload the source instead of being a
+          // permanent no-op once hlsRef.current is destroyed.
           setFatalError({ type: data.type, details: data.details, message: 'The stream could not be loaded.' })
-          destroy()
           break
       }
     })

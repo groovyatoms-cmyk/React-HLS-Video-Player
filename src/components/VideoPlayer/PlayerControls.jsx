@@ -387,7 +387,7 @@ function PlayerControls({
             </button>
           )}
 
-          {flags.audioSelector && state.audioTracks.length > 1 && !anySubmenuEnabled === false && (
+          {flags.audioSelector && state.audioTracks.length > 1 && (
             <button
               type="button"
               className="pv-btn"
