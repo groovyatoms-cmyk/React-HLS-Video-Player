@@ -1,6 +1,31 @@
 {
   "name": "reactjvideoplayer",
-  "description": "Production-grade, reusable React HLS video player built with Vite, ReactPlayer and hls.js.",
+  "description": "Production-grade React HLS video player component with Vite, hls.js and ReactPlayer — quality/audio/subtitle selection, Live DVR, ads, DRM, thumbnails, and a full OTT-style UI.",
+  "keywords": [
+    "react",
+    "react-component",
+    "video-player",
+    "hls",
+    "hls.js",
+    "m3u8",
+    "video-streaming",
+    "streaming",
+    "adaptive-bitrate",
+    "media-player",
+    "ott-player",
+    "live-streaming",
+    "picture-in-picture",
+    "vite"
+  ],
+  "homepage": "https://github.com/groovyatoms-cmyk/REACTJVIDEOPLAYER#readme",
+  "bugs": {
+    "url": "https://github.com/groovyatoms-cmyk/REACTJVIDEOPLAYER/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/groovyatoms-cmyk/REACTJVIDEOPLAYER.git"
+  },
+  "license": "UNLICENSED",
   "private": true,
   "version": "1.2.0",
   "type": "module",
